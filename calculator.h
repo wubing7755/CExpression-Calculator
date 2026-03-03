@@ -10,6 +10,8 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
+#include <stdbool.h>
+
 /**
  * evaluate - 表达式求值主函数
  * 

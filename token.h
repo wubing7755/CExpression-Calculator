@@ -11,8 +11,6 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include <stdbool.h>
-
 /*-----------------------------------------------------------------------------
  * Token 类型枚举
  * 
@@ -55,13 +53,13 @@ typedef struct {
  * 全局变量声明
  * 
  * 说明：
- * - currentToken : 当前正在处理的 Token
- * - inputExpr   : 用户输入的表达式字符串
- * - pos         : 当前读取位置（索引）
+ * - inputExpr      : 用户输入的表达式字符串
+ * - pos            : 当前读取位置（索引）
+ * - currentToken   : 当前正在处理的 Token
  *---------------------------------------------------------------------------*/
 extern char g_inputExpr[256];   // 存储用户输入的表达式
 extern int g_pos;               // 当前字符位置
-extern Token g_currentToken;   // 当前 Token
+extern Token g_currentToken;    // 当前 Token
 
 /*-----------------------------------------------------------------------------
  * 函数声明

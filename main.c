@@ -22,9 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <ctype.h>
-#include "token.h"
 #include "calculator.h"
 
 /*-----------------------------------------------------------------------------
@@ -74,9 +72,9 @@ void printResult(const char* expression, double result)
 bool isExitCommand(const char* input)
 {
     // 忽略大小写比较
-    if (strcasecmp(input, "quit") == 0 ||
-        strcasecmp(input, "exit") == 0 ||
-        strcasecmp(input, "q") == 0) {
+    if (strcmp(input, "quit") == 0 ||
+        strcmp(input, "exit") == 0 ||
+        strcmp(input, "q") == 0) {
         return true;
     }
     return false;
