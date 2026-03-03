@@ -64,3 +64,7 @@ dkms.conf
 
 # Visual Studio Code
 .vscode/
+.cache/
+
+# CMake
+build/
