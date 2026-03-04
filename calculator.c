@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include "token.h"
 
 /*-----------------------------------------------------------------------------
@@ -81,64 +82,60 @@ void skipWhitespace(void)
  */
 void getNextToken(void)
 {
-    // TODO: 实现词法分析逻辑
-    // 
-    // 步骤1: 跳过空白字符
-    //   调用 skipWhitespace();
-    //
-    // 步骤2: 检查当前字符
-    //   if (g_inputExpr[g_pos] 是数字) 
-    //       -> 解析数字，创建 TOKEN_NUMBER
-    //   else if (g_inputExpr[g_pos] == '+')
-    //       -> 创建 TOKEN_PLUS
-    //   else if (g_inputExpr[g_pos] == '-')
-    //       -> 创建 TOKEN_MINUS
-    //   ... 其他运算符类似
-    //
-    // 步骤3: 每次处理完后，移动 g_pos 到下一个字符
-    //
-    // 示例代码结构：
-    /*
-    skipWhitespace();
+    // 实现词法分析逻辑
     
-    char c = g_inputExpr[g_pos];
-    
-    if (isdigit(c)) {
-        // TODO: 解析数字
-        // 提示：用一个循环读取连续的数字字符
-        // 存储到临时字符串，然后用 atof() 转换
-        char numStr[64] = {0};
-        int i = 0;
-        while (isdigit(g_inputExpr[g_pos])) {
-            numStr[i++] = g_inputExpr[g_pos++];
-        }
-        g_currentToken.type = TOKEN_NUMBER;
-        g_currentToken.value = atof(numStr);
-    }
-    else if (c == '+') {
-        g_currentToken.type = TOKEN_PLUS;
-        g_pos++;
-    }
-    // ... 其他情况类似
-    */
-   
+    g_currentToken.type = TOKEN_ERROR;
+
     // 先调用 skipWhitespace 跳过空格
     skipWhitespace();
     
     // 获取当前字符
     char c = g_inputExpr[g_pos];
     
-    // 如果是字符串结束
+    // 字符串结束
     if (c == '\0') {
         g_currentToken.type = TOKEN_END;
-        return;
     }
-    
-    // TODO: 添加运算符和括号的识别
-    // switch (c) { ... }
-    
-    // 如果都不是，标记为错误
-    g_currentToken.type = TOKEN_ERROR;
+    // 数字
+    else if (isdigit(c)) {
+        char numStr[64] = {0};
+        int i = 0;
+        while (isdigit(g_inputExpr[g_pos]) || g_inputExpr[g_pos] == '.') {
+            numStr[i++] = g_inputExpr[g_pos++];
+        }
+        g_currentToken.type = TOKEN_NUMBER;
+        g_currentToken.value = atof(numStr);
+    }
+
+    // 添加运算符和括号的识别
+    switch (c) {
+        case '+':
+            g_currentToken.type = TOKEN_PLUS;
+            g_pos++;
+            break;
+        case '-':
+            g_currentToken.type = TOKEN_MINUS;
+            g_pos++;
+            break;
+        case '*':
+            g_currentToken.type = TOKEN_MUL;
+            g_pos++;
+            break;
+        case '/':
+            g_currentToken.type = TOKEN_DIV;
+            g_pos++;
+            break;
+        case '(':
+            g_currentToken.type = TOKEN_LPAREN;
+            g_pos++;
+            break;
+        case ')':
+            g_currentToken.type = TOKEN_RPAREN;
+            g_pos++;
+            break;
+    }
+
+    return;
 }
 
 /*-----------------------------------------------------------------------------
@@ -281,7 +278,7 @@ double parseExpression(void)
 int evaluate(const char* expression, double* result)
 {
     // 复制表达式到全局变量
-    strncpy(g_inputExpr, expression, 255);
+    strncpy_s(g_inputExpr, 256, expression, 255);
     g_inputExpr[255] = '\0';
     
     // 初始化位置

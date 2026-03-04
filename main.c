@@ -29,6 +29,32 @@
  * 函数声明
  *---------------------------------------------------------------------------*/
 
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+
+static void enable_utf8_console(void)
+{
+    // 先判断是否在控制台中运行
+    if (_isatty(_fileno(stdout)))
+    {
+        UINT output_cp = GetConsoleOutputCP();
+        UINT input_cp  = GetConsoleCP();
+
+        // 只有当不是 UTF-8 时才修改
+        if (output_cp != 65001)
+        {
+            SetConsoleOutputCP(65001);
+        }
+
+        if (input_cp != 65001)
+        {
+            SetConsoleCP(65001);
+        }
+    }
+}
+#endif
+
 /**
  * printWelcome - 打印欢迎信息
  * 
@@ -120,6 +146,10 @@ void printHelp(void)
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+    enable_utf8_console();
+#endif
+
     // 打印欢迎信息
     printWelcome();
     
