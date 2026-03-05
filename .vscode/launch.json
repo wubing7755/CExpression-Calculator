@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Calculator",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/calculator",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake Build"
+    }
+  ]
+}

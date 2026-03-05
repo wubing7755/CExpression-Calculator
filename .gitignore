@@ -63,8 +63,11 @@ dkms.conf
 *.vcxproj.user
 
 # Visual Studio Code
-.vscode/
 .cache/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 
 # CMake
 build/
