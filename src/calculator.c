@@ -26,12 +26,12 @@
  * 
  ******************************************************************************/
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
 #include "token.h"
+#include "logger.h"
 
 /*-----------------------------------------------------------------------------
  * 函数声明
@@ -192,7 +192,7 @@ double parseFactor(void)
       }
     
     // 错误处理
-    printf("Error: Unexpected token in factor\n");
+    logger_log(LOG_ERROR, "Error: Unexpected token in factor\n");
     return 0.0;
 }
 

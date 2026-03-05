@@ -43,16 +43,14 @@
  */
 void printWelcome(void)
 {
-    logger_log(LOG_INFO, "%s", "Test Logger: This is an info message.");
-    
-    printf("===========================================\n");
-    printf("       C语言控制台计算器 v1.0\n");
-    printf("===========================================\n");
-    printf("\n");
-    printf("支持运算: + - * / ( )\n");
-    printf("输入示例: (3-5)*6 或 2+3*4\n");
-    printf("输入 'quit' 或 'exit' 退出程序\n");
-    printf("\n");
+    logger_log(LOG_INFO, "===========================================\n");
+    logger_log(LOG_INFO, "       C语言控制台计算器 v1.0\n");
+    logger_log(LOG_INFO, "===========================================\n");
+    logger_log(LOG_INFO, "\n");
+    logger_log(LOG_INFO, "支持运算: + - * / ( )\n");
+    logger_log(LOG_INFO, "输入示例: (3-5)*6 或 2+3*4\n");
+    logger_log(LOG_INFO, "输入 'quit' 或 'exit' 退出程序\n");
+    logger_log(LOG_INFO, "\n");
 }
 
 /**
@@ -65,9 +63,9 @@ void printWelcome(void)
  */
 void printResult(const char* expression, double result)
 {
-    printf("表达式: %s\n", expression);
-    printf("结果:   %.2f\n", result);  // 保留2位小数输出
-    printf("\n");
+    logger_log(LOG_INFO, "表达式: %s\n", expression);
+    logger_log(LOG_INFO, "结果:   %.2f\n", result);  // 保留2位小数输出
+    logger_log(LOG_INFO, "\n");
 }
 
 /**
@@ -116,11 +114,11 @@ bool isValidExpression(const char* input)
  */
 void printHelp(void)
 {
-    printf("【使用提示】\n");
-    printf("- 直接输入数学表达式，例如: 2+3*4\n");
-    printf("- 使用括号改变优先级，例如: (2+3)*4\n");
-    printf("- 支持小数，例如: 3.14 * 2\n");
-    printf("\n");
+    logger_log(LOG_INFO, "【使用提示】\n");
+    logger_log(LOG_INFO, "- 直接输入数学表达式，例如: 2+3*4\n");
+    logger_log(LOG_INFO, "- 使用括号改变优先级，例如: (2+3)*4\n");
+    logger_log(LOG_INFO, "- 支持小数，例如: 3.14 * 2\n");
+    logger_log(LOG_INFO, "\n");
 }
 
 /*-----------------------------------------------------------------------------
@@ -147,13 +145,13 @@ int main(void)
     // 主循环：持续接收用户输入直到退出
     while (1) {
         // 提示用户输入
-        printf("请输入表达式> ");
+        logger_log(LOG_INFO, "请输入表达式> ");
         
         // 读取用户输入（最多255个字符）
         char input[256] = {0};
         if (fgets(input, sizeof(input), stdin) == NULL) {
-            // 输入出错（如Ctrl+D/Ctrl+Z）
-            printf("\n程序结束\n");
+            // 输入中止（如Ctrl+D/Ctrl+Z）
+            logger_log(LOG_INFO, "\n程序结束\n");
             break;
         }
         
@@ -167,7 +165,7 @@ int main(void)
         
         // 检查是否为退出命令
         if (isExitCommand(input)) {
-            printf("感谢使用，再见！\n");
+            logger_log(LOG_INFO, "感谢使用，再见！\n");
             break;
         }
         
@@ -180,8 +178,8 @@ int main(void)
             printResult(input, result);
         } else {
             // 计算失败
-            printf("错误: 表达式计算失败，请检查输入是否正确\n");
-            printf("\n");
+            logger_log(LOG_ERROR, "错误: 表达式计算失败，请检查输入是否正确\n");
+            logger_log(LOG_INFO, "\n");
         }
     }
     

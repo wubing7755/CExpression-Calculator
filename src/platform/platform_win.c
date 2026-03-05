@@ -15,7 +15,6 @@
 int platform_init(void)
 {
     /* Windows 平台初始化 - 当前无需特殊处理 */
-    printf("Windows 平台初始化成功\n");
     return 0;
 }
 

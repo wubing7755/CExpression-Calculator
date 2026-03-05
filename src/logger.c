@@ -45,8 +45,8 @@ void logger_log(LogLevel level, const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-    fprintf(stderr, "[%s] [%s] ", time_str, level_str);
-    vfprintf(stderr, format, args);
-    fprintf(stderr, "\n");
+    fprintf(stdout, "[%s] [%s] ", time_str, level_str);
+    vfprintf(stdout, format, args);
+    fprintf(stdout, "\n");
     va_end(args);
 }
