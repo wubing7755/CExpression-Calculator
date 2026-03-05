@@ -47,36 +47,60 @@ CExpressionCalculator/
 
 ## 🚀 Inicio Rápido
 
-### Compilar el Proyecto
-
-#### Método 1: Usando GCC
+### Compilar el Proyecto (CMake)
 
 ```bash
-gcc main.c calculator.c -o calculator.exe -lm
-```
-
-#### Método 2: Usando CMake
-
-```bash
-# Crear directorio de compilación
+# 1. Crear directorio de compilación
 mkdir build && cd build
 
-# Configurar proyecto (especificar MinGW)
-cmake -G "MinGW Makefiles" ..   # Windows
-cmake ..                        # Linux / macOS
+# 2. Configurar según tu plataforma
+#    +----------+------------------+----------------------------------+
+#    | Plataforma| Compilador      | Comando de compilación          |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MinGW / MSYS2  | cmake -G "MinGW Makefiles" .. |
+#    |          |                 | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MSVC (VS 2022) | cmake -G "Visual Studio 17 2022"|
+#    |          |                 | cmake --build . --config Release |
+#    +----------+------------------+----------------------------------+
+#    | Linux    | GCC / Clang     | cmake ..                        |
+#    |          |                 | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
+#    | macOS    | Apple Clang     | cmake ..                        |
+#    |          |                 | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
 
-# Especificar el tipo de compilación（Debug / Release）
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+# Ejemplo Windows MinGW:
+cmake -G "MinGW Makefiles" ..
 
-# Compilar
+# Ejemplo Windows MSVC:
+cmake -G "Visual Studio 17 2022" ..
+
+# Ejemplo Linux/macOS:
+cmake ..
+
+# 3. Compilar
 cmake --build .
 ```
 
 ### Ejecutar el Programa
 
 ```bash
-./calculator.exe    # Windows
-./calculator        # Linux / macOS
+# Windows
+./bin/calculator.exe
+
+# Linux / macOS
+./bin/calculator
+```
+
+### Compilación directa con GCC (No recomendado)
+
+```bash
+# Windows
+gcc src/main.c src/calculator.c -o calculator.exe -lm
+
+# Linux / macOS
+gcc src/main.c src/calculator.c -o calculator -lm
 ```
 
 ### Ejemplo de Uso

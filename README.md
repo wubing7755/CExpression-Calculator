@@ -47,36 +47,60 @@ CExpressionCalculator/
 
 ## 🚀 快速开始
 
-### 编译项目
-
-#### 方法一：使用 GCC
+### 编译项目 (CMake)
 
 ```bash
-gcc main.c calculator.c -o calculator.exe -lm
-```
-
-#### 方法二：使用 CMake
-
-```bash
-# 创建构建目录
+# 1. 创建构建目录
 mkdir build && cd build
 
-# 配置项目（指定 MinGW）
-cmake -G "MinGW Makefiles" ..   # Windows
-cmake ..                        # Linux / macOS
+# 2. 根据平台选择生成器配置项目
+#    +----------+------------------+----------------------------------+
+#    | 平台     | 编译器           | 构建命令                         |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MinGW / MSYS2    | cmake -G "MinGW Makefiles" ..   |
+#    |          |                  | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MSVC (VS 2022)   | cmake -G "Visual Studio 17 2022"|
+#    |          |                  | cmake --build . --config Release |
+#    +----------+------------------+----------------------------------+
+#    | Linux    | GCC / Clang      | cmake ..                         |
+#    |          |                  | cmake --build .                   |
+#    +----------+------------------+----------------------------------+
+#    | macOS    | Apple Clang      | cmake ..                         |
+#    |          |                  | cmake --build .                   |
+#    +----------+------------------+----------------------------------+
 
-# 指定构建类型（Debug / Release）
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+# Windows MinGW 示例:
+cmake -G "MinGW Makefiles" ..
 
-# 编译
+# Windows MSVC 示例:
+cmake -G "Visual Studio 17 2022" ..
+
+# Linux/macOS 示例:
+cmake ..
+
+# 3. 编译
 cmake --build .
 ```
 
 ### 运行程序
 
 ```bash
-./calculator.exe    # Windows
-./calculator        # Linux / macOS
+# Windows
+./bin/calculator.exe
+
+# Linux / macOS
+./bin/calculator
+```
+
+### 直接使用 GCC 编译 (不推荐)
+
+```bash
+# Windows
+gcc src/main.c src/calculator.c -o calculator.exe -lm
+
+# Linux / macOS
+gcc src/main.c src/calculator.c -o calculator -lm
 ```
 
 ### 使用示例

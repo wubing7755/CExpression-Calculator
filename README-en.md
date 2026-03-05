@@ -47,36 +47,60 @@ CExpressionCalculator/
 
 ## 🚀 Quick Start
 
-### Build the Project
-
-#### Method 1: Using GCC
+### Build Project (CMake)
 
 ```bash
-gcc main.c calculator.c -o calculator.exe -lm
-```
-
-#### Method 2: Using CMake
-
-```bash
-# Create build directory
+# 1. Create build directory
 mkdir build && cd build
 
-# Configure project (specify MinGW)
-cmake -G "MinGW Makefiles" ..   # Windows
-cmake ..                        # Linux / macOS
+# 2. Configure based on your platform
+#    +----------+------------------+----------------------------------+
+#    | Platform | Compiler         | Build Command                   |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MinGW / MSYS2   | cmake -G "MinGW Makefiles" ..  |
+#    |          |                  | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
+#    | Windows  | MSVC (VS 2022)  | cmake -G "Visual Studio 17 2022"|
+#    |          |                  | cmake --build . --config Release |
+#    +----------+------------------+----------------------------------+
+#    | Linux    | GCC / Clang     | cmake ..                        |
+#    |          |                  | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
+#    | macOS    | Apple Clang     | cmake ..                        |
+#    |          |                  | cmake --build .                  |
+#    +----------+------------------+----------------------------------+
 
-# Specify the build type（Debug / Release）
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+# Windows MinGW example:
+cmake -G "MinGW Makefiles" ..
 
-# Build
+# Windows MSVC example:
+cmake -G "Visual Studio 17 2022" ..
+
+# Linux/macOS example:
+cmake ..
+
+# 3. Build
 cmake --build .
 ```
 
 ### Run the Program
 
 ```bash
-./calculator.exe    # Windows
-./calculator        # Linux / macOS
+# Windows
+./bin/calculator.exe
+
+# Linux / macOS
+./bin/calculator
+```
+
+### Direct GCC Compilation (Not Recommended)
+
+```bash
+# Windows
+gcc src/main.c src/calculator.c -o calculator.exe -lm
+
+# Linux / macOS
+gcc src/main.c src/calculator.c -o calculator -lm
 ```
 
 ### Usage Example
