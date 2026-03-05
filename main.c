@@ -53,6 +53,13 @@ static void enable_utf8_console(void)
         }
     }
 }
+#else
+#include <locale.h>
+
+static void enable_utf8_console(void)
+{
+    setlocale(LC_ALL, "");
+}
 #endif
 
 /**
@@ -146,10 +153,8 @@ void printHelp(void)
 
 int main(int argc, char* argv[])
 {
-#ifdef _WIN32
     enable_utf8_console();
-#endif
-
+    
     // 打印欢迎信息
     printWelcome();
     
