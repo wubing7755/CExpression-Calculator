@@ -3,51 +3,21 @@
  * 
  * 本文件实现了表达式求值的核心算法：递归下降解析器（Recursive Descent Parser）
  * 
- * 【学习目标】
- * - 理解递归下降算法的基本思想
- * - 理解运算符优先级的处理方式
- * - 理解BNF语法定义的递归性质
- * 
- * 【核心概念 - 递归下降算法】
- * 
- * 数学表达式的递归定义：
- *   表达式 = 项 { (+|-) 项 }           // 加减运算，最低优先级
- *   项     = 因子 { (*|/) 因子 }       // 乘除运算，次高优先级
- *   因子   = 数字 | '(' 表达式 ')'    // 括号或数字，最高优先级
- * 
- * 这种定义本身就是递归的！外层表达式由内层项组成，项由因子组成。
- * 通过函数调用的嵌套（递归），自然地实现了运算符优先级。
- * 
- * 示例：(3+5)*2
- *   1. parseExpression() 调用 parseTerm()
- *   2. parseTerm() 调用 parseFactor()
- *   3. parseFactor() 遇到 '('，递归调用 parseExpression() 处理 (3+5)
- *   4. 递归返回后得到 8，再处理 *2
- * 
  ******************************************************************************/
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <math.h>
 #include <ctype.h>
 #include "token.h"
 #include "logger.h"
 
-/*-----------------------------------------------------------------------------
- * 函数声明
- *---------------------------------------------------------------------------*/
 double parseExpression(void);
 
-/*-----------------------------------------------------------------------------
- * 全局变量定义
- *---------------------------------------------------------------------------*/
 char g_inputExpr[256] = {0};   // 用户输入的表达式
 int g_pos = 0;                 // 当前读取位置
 Token g_currentToken;         // 当前Token
-
-/*-----------------------------------------------------------------------------
- * 辅助函数实现（框架已提供）
- *---------------------------------------------------------------------------*/
 
 /**
  * skipWhitespace - 跳过空白字符
@@ -64,12 +34,8 @@ void skipWhitespace(void)
     }
 }
 
-/*-----------------------------------------------------------------------------
- * 【TODO - 由你实现】
- *---------------------------------------------------------------------------*/
-
 /**
- * getNextToken - 获取下一个Token（词法分析）
+ * getNextToken - 消费掉当前Token，并获取下一Token（词法分析）
  * 
  * 【你需要实现这个函数】
  * 
@@ -154,60 +120,51 @@ void getNextToken(void)
     return;
 }
 
-/*-----------------------------------------------------------------------------
- * 递归下降Parser（框架 + 核心逻辑说明）
- *---------------------------------------------------------------------------*/
-
 /**
  * parseFactor - 解析因子（Factor）
  * 
- * 【框架已提供 + TODO】
- * 
- * 因子是表达式中最基本的单元：
- *   因子 = 数字 | '(' 表达式 ')'
- * 
- * 说明：
- * - 如果当前Token是数字，直接返回其值
- * - 如果是左括号 '('，递归调用 parseExpression()，然后期望右括号 ')'
- * - 这就是处理括号优先级的核心！
+ *   Factor  -> ['+'|'-'] ( Number | '(' Expr ')' )
  * 
  * @return 计算结果
  */
 double parseFactor(void)
 {
-    // 检查 TOKEN_NUMBER
-    if (g_currentToken.type == TOKEN_NUMBER) {
-        double val = g_currentToken.value;
+   // 一元运算符
+   int sign = 1;
+
+   if (g_currentToken.type == TOKEN_MINUS)
+   {
         getNextToken();
-        return val;
+        sign = -1;
+   }
+   else if (g_currentToken.type == TOKEN_PLUS)
+   {
+        getNextToken();
+   }
+   
+   if (g_currentToken.type == TOKEN_LPAREN)
+   {
+        getNextToken();
+        double expr = parseExpression();
+        getNextToken();
+        return sign * expr;
+   }
+
+   if (g_currentToken.type == TOKEN_NUMBER)
+    {
+        double num = g_currentToken.value;
+        getNextToken();
+        return sign * num;
     }
-    
-    // 检查左括号
-      if (g_currentToken.type == TOKEN_LPAREN) {
-          getNextToken();  // 跳过 '('
-          double val = parseExpression();  // 递归解析括号内的表达式
-          // TODO: 检查是否有对应的右括号
-          // if (g_currentToken.type == TOKEN_RPAREN) { ... }
-          return val;
-      }
-    
-    // 错误处理
-    logger_log(LOG_ERROR, "Error: Unexpected token in factor\n");
+
+    logger_log(LOG_ERROR, "Unexpected token in factor");
     return 0.0;
 }
 
 /**
  * parseTerm - 解析项（Term）
- * 
- * 【框架已提供】
- * 
- * 项处理乘除运算：
- *   项 = 因子 { (*|/) 因子 }
- * 
- * 说明：
- * - 先解析一个因子
- * - 然后循环处理后续的乘除运算
- * - 乘除优先级高于加减，所以单独处理
+ *
+ *   Term    -> Factor   | Term ('*'|'/') Factor
  * 
  * @return 计算结果
  */
@@ -217,18 +174,23 @@ double parseTerm(void)
     double result = parseFactor();
     
     // 第二步：循环处理乘除运算
-    // TODO: 完成乘除运算循环
-    // while (g_currentToken.type == TOKEN_MUL || g_currentToken.type == TOKEN_DIV) {
-    //     TokenType op = g_currentToken.type;
-    //     getNextToken();  // 读取下一个因子
-    //     double right = parseFactor();
-    //     
-    //     if (op == TOKEN_MUL) {
-    //         result = result * right;
-    //     } else {
-    //         // TODO: 处理除法，注意除零错误！
-    //     }
-    // }
+    while (g_currentToken.type == TOKEN_MUL || g_currentToken.type == TOKEN_DIV) {
+        TokenType op = g_currentToken.type;
+        getNextToken();
+        double right = parseFactor();
+        
+        if (op == TOKEN_MUL) {
+            result = result * right;
+        } else {
+            // 处理除法，除零错误
+            if (right == 0.0){
+                logger_log(LOG_ERROR, "Division by zero!");
+                return 0.0;
+            }
+
+            result = result / right;
+        }
+    }
     
     return result;
 }
@@ -236,17 +198,7 @@ double parseTerm(void)
 /**
  * parseExpression - 解析表达式（Expression）
  * 
- * 【框架已提供】
- * 
- * 表达式是递归下降的入口点：
- *   表达式 = 项 { (+|-) 项 }
- * 
- * 说明：
- * - 先解析一个项（处理乘除）
- * - 然后循环处理加减运算
- * - 因为项已经处理了乘除，所以这里只需处理加减
- * 
- * 【这就是递归下降算法的入口！main函数会调用它】
+ *   Expr    -> Term     | Expr ('+'|'-') Term
  * 
  * @return 最终计算结果
  */
@@ -256,30 +208,25 @@ double parseExpression(void)
     double result = parseTerm();
     
     // 第二步：循环处理加减运算
-    // TODO: 完成加减运算循环
-    // while (g_currentToken.type == TOKEN_PLUS || g_currentToken.type == TOKEN_MINUS) {
-    //     TokenType op = g_currentToken.type;
-    //     getNextToken();  // 读取下一个项
-    //     double right = parseTerm();
-    //     
-    //     if (op == TOKEN_PLUS) {
-    //         result = result + right;
-    //     } else {
-    //         result = result - right;
-    //     }
-    // }
+    while (g_currentToken.type == TOKEN_PLUS || g_currentToken.type == TOKEN_MINUS) {
+        TokenType op = g_currentToken.type;
+        getNextToken();
+        double right = parseTerm();
+        
+        if (op == TOKEN_PLUS) {
+            result = result + right;
+        } else {
+            result = result - right;
+        }
+    }
     
     return result;
 }
 
-/*-----------------------------------------------------------------------------
- * 主求值函数（框架已提供）
- *---------------------------------------------------------------------------*/
-
 /**
  * evaluate - 表达式求值主函数
  * 
- * 【框架已提供 - 不需要修改】
+ * 【框架已提供】
  * 
  * 这是计算器的入口点，按顺序执行：
  * 1. 初始化全局变量
@@ -293,7 +240,7 @@ double parseExpression(void)
  */
 int evaluate(const char* expression, double* result)
 {
-    // 复制表达式到全局变量 (跨平台兼容)
+    // 复制表达式到全局变量
     strncpy(g_inputExpr, expression, 255);
     g_inputExpr[255] = '\0';
     
@@ -307,10 +254,9 @@ int evaluate(const char* expression, double* result)
     *result = parseExpression();
     
     // 检查是否所有Token都已处理完毕
-    // TODO: 添加检查
-    // if (g_currentToken.type != TOKEN_END) {
-    //     printf("Warning: Extra tokens after expression\n");
-    // }
+    if (g_currentToken.type != TOKEN_END) {
+        logger_log(LOG_WARNING, "Extra tokens after expression");
+    }
     
     return 0;
 }

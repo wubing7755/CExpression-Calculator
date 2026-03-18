@@ -1,7 +1,7 @@
 /*******************************************************************************
- * main.c - 控制台计算器程序主入口
+ * main.c - 主入口
  * 
- * 这是一个用于学习C语言的练习项目
+ * 这是一个采用了"递归下降解析器"（Recursive Descent Parser）算法的表达式求值程序
  * 功能：接收用户输入的数学表达式，计算并输出结果
  * 
  * 支持的运算：
@@ -11,12 +11,13 @@
  *   - 除法 (/)
  *   - 括号 ()
  *   - 运算符优先级
- * 
- * 【学习提示】
- * 本程序采用了"递归下降解析器"（Recursive Descent Parser）算法
- * 这是一种经典且易于理解的表达式求值方法
- * 
- * 请查看 token.h 和 calculator.c 文件了解核心算法
+ *
+ * 文法：
+ *   Expr    -> Term     | Expr ('+'|'-') Term
+ *   Term    -> Factor   | Term ('*'|'/') Factor
+ *   Factor  -> ['+'|'-'] ( Number | '(' Expr ')' )
+ *   Number  -> Digit { Digit }
+ *   Digit   -> '0'|'1'|'2'|'3'|...|'9'
  ******************************************************************************/
 
 #include <stdio.h>
@@ -31,15 +32,8 @@
  * 函数声明
  *---------------------------------------------------------------------------*/
 
-/* 
- * UTF-8 控制台设置已移至 platform 模块
- * 统一通过 platform_enable_utf8() 调用
- */
-
 /**
  * printWelcome - 打印欢迎信息
- * 
- * 【框架已提供】
  */
 void printWelcome(void)
 {
@@ -56,8 +50,6 @@ void printWelcome(void)
 /**
  * printResult - 打印计算结果
  * 
- * 【框架已提供】
- * 
  * @param expression 用户输入的表达式
  * @param result 计算结果
  */
@@ -70,8 +62,6 @@ void printResult(const char* expression, double result)
 
 /**
  * isExitCommand - 检查是否为退出命令
- * 
- * 【框架已提供】
  * 
  * @param input 用户输入
  * @return true 表示退出
@@ -90,8 +80,6 @@ bool isExitCommand(const char* input)
 /**
  * isValidExpression - 简单检查表达式是否为空
  * 
- * 【框架已提供】
- * 
  * @param input 用户输入
  * @return true 表示有效
  */
@@ -109,8 +97,6 @@ bool isValidExpression(const char* input)
 
 /**
  * printHelp - 打印帮助信息
- * 
- * 【框架已提供】
  */
 void printHelp(void)
 {
@@ -188,35 +174,3 @@ int main(void)
     
     return 0;
 }
-
-/*-----------------------------------------------------------------------------
- * 【学习任务 - 你需要完成的函数】
- * 
- * 以下函数在 calculator.c 中标记为 TODO，你需要实现它们：
- * 
- * 1. getNextToken()      - 词法分析，识别Token
- *    提示：使用 isdigit() 检查数字，使用 switch 处理运算符
- * 
- * 2. parseFactor()       - 解析因子（数字或括号表达式）
- *    提示：处理 TOKEN_NUMBER 和 TOKEN_LPAREN
- * 
- * 3. parseTerm()        - 解析项（乘除运算）
- *    提示：使用 while 循环处理连续的乘除
- * 
- * 4. parseExpression() - 解析表达式（加减运算）
- *    提示：使用 while 循环处理连续的加减
- * 
- * 【实现顺序建议】
- * 1. 先实现 getNextToken() - 这是基础
- * 2. 再实现 parseFactor() - 处理括号
- * 3. 然后 parseTerm()     - 处理乘除
- * 4. 最后 parseExpression() - 处理加减
- * 
- * 【测试用例】
- *   输入: 2+3*4      期望输出: 14  (先乘除后加减)
- *   输入: (2+3)*4    期望输出: 20  (括号优先)
- *   输入: 10/3       期望输出: 3.33
- *   输入: (3-5)*6    期望输出: -12
- * 
- * 祝你学习愉快！🎉
- *---------------------------------------------------------------------------*/
