@@ -47,32 +47,73 @@ typedef struct {
 } Token;
 
 /**
- * 全局变量声明
+ * ParserContext - 解析器上下文结构体
  * 
  * 说明：
- * - inputExpr      : 用户输入的表达式字符串
- * - pos            : 当前读取位置（索引）
- * - currentToken   : 当前正在处理的 Token
+ * - expression  : 用户输入的表达式字符串
+ * - length      : 表达式长度
+ * - pos         : 当前读取位置（索引）
+ * - currentToken: 当前正在处理的 Token
  */
-extern char g_inputExpr[256];   // 存储用户输入的表达式
-extern int g_pos;               // 当前字符位置
-extern Token g_currentToken;    // 当前 Token
+typedef struct {
+    const char* expression;  // 表达式字符串（只读）
+    size_t length;           // 表达式长度
+    size_t pos;              // 当前字符位置
+    Token currentToken;      // 当前 Token
+} ParserContext;
 
 /**
- * getNextToken - 获取下一个 Token
- *
- * 返回值：
- * - 解析得到的 Token（存储在 g_currentToken 中）
+ * 错误码枚举
  */
-void getNextToken(void);
+typedef enum {
+    CALC_OK = 0,                    // 计算成功
+    CALC_ERROR_NULL_EXPR,           // 表达式为空
+    CALC_ERROR_INVALID_CHAR,        // 无效字符
+    CALC_ERROR_DIV_BY_ZERO,         // 除零错误
+    CALC_ERROR_UNEXPECTED_TOKEN,    // 意外的Token
+    CALC_ERROR_MISSING_RPAREN,      // 缺少右括号
+    CALC_ERROR_SYNTAX               // 语法错误
+} CalcError;
+
+/*=============================================================================
+ * 函数声明
+ *===========================================================================*/
 
 /**
- * skipWhitespace - 跳过空白字符
+ * parserInit - 初始化解析器上下文
  * 
- * 说明：
- * - 跳过空格、制表符等空白字符
- * - 更新 g_pos 位置
+ * @param context 解析器上下文指针
+ * @param expression 要解析的表达式字符串
  */
-void skipWhitespace(void);
+void parserInit(ParserContext* context, const char* expression);
+
+/**
+ * parserGetNextToken - 获取下一个 Token
+ * 
+ * @param context 解析器上下文指针
+ */
+void parserGetNextToken(ParserContext* context);
+
+/**
+ * parserSkipWhitespace - 跳过空白字符
+ * 
+ * @param context 解析器上下文指针
+ */
+void parserSkipWhitespace(ParserContext* context);
+
+/**
+ * 解析函数声明
+ */
+double parserParseExpression(ParserContext* context);
+double parserParseTerm(ParserContext* context);
+double parserParseFactor(ParserContext* context);
+
+/**
+ * parserGetErrorMessage - 获取错误码对应的错误信息
+ * 
+ * @param err 错误码
+ * @return 错误信息字符串
+ */
+const char* parserGetErrorMessage(CalcError err);
 
 #endif // TOKEN_H

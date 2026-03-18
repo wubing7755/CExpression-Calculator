@@ -5,26 +5,50 @@
  * 
  * 使用方法：
  *   #include "calculator.h"
+ * 
+ * API使用示例：
+ *   double result;
+ *   CalcError err = evaluate("2+3*4", &result);
+ *   if (err != CALC_OK) {
+ *       printf("Error: %s\n", parserGetErrorMessage(err));
+ *   }
  ******************************************************************************/
 
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
 #include <stdbool.h>
+#include "token.h"
+
+/*=============================================================================
+ * 公共API
+ *===========================================================================*/
 
 /**
  * evaluate - 表达式求值主函数
  * 
- * 这是计算器的入口点，接收一个数学表达式字符串，返回计算结果
+ * 接收一个数学表达式字符串，返回计算结果
+ * 支持详细的错误码返回，便于调试
  * 
  * @param expression 输入的数学表达式字符串（如 "2+3*4"）
  * @param result 用于存储计算结果的指针
- * @return 0 表示成功，非0表示出错
+ * @return CalcError 错误码，CALC_OK 表示成功
  * 
  * 使用示例：
  *   double result;
- *   evaluate("(3-5)*6", &result);  // result = -12
+ *   CalcError err = evaluate("(3-5)*6", &result);  // result = -12, err = CALC_OK
  */
-int evaluate(const char* expression, double* result);
+CalcError evaluate(const char* expression, double* result);
+
+/**
+ * evaluateWithContext - 使用ParserContext进行求值（最灵活）
+ * 
+ * 适用于需要自定义解析器行为的场景
+ * 
+ * @param context 已初始化的ParserContext
+ * @param result 用于存储计算结果的指针
+ * @return CalcError 错误码
+ */
+CalcError evaluateWithContext(ParserContext* context, double* result);
 
 #endif // CALCULATOR_H

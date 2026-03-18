@@ -25,6 +25,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "calculator.h"
+#include "token.h"
 #include "platform.h"
 #include "logger.h"
 
@@ -157,14 +158,14 @@ int main(void)
         
         // 计算表达式
         double result = 0.0;
-        int ret = evaluate(input, &result);
+        CalcError err = evaluate(input, &result);
         
-        if (ret == 0) {
+        if (err == CALC_OK) {
             // 计算成功，打印结果
             printResult(input, result);
         } else {
             // 计算失败
-            logger_log(LOG_ERROR, "错误: 表达式计算失败，请检查输入是否正确\n");
+            logger_log(LOG_ERROR, "错误: %s\n", parserGetErrorMessage(err));
             logger_log(LOG_INFO, "\n");
         }
     }
