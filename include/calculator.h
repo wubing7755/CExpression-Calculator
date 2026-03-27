@@ -32,23 +32,13 @@
  * 
  * @param expression 输入的数学表达式字符串（如 "2+3*4"）
  * @param result 用于存储计算结果的指针
+ * @param err_pos 若非 NULL，返回出错位置（0 基于原始字符串索引）
  * @return CalcError 错误码，CALC_OK 表示成功
  * 
  * 使用示例：
  *   double result;
- *   CalcError err = evaluate("(3-5)*6", &result);  // result = -12, err = CALC_OK
+ *   CalcError err = evaluate("(3-5)*6", &result, 0);  // result = -12, err = CALC_OK
  */
-CalcError evaluate(const char* expression, double* result);
-
-/**
- * evaluateWithContext - 使用ParserContext进行求值（最灵活）
- * 
- * 适用于需要自定义解析器行为的场景
- * 
- * @param context 已初始化的ParserContext
- * @param result 用于存储计算结果的指针
- * @return CalcError 错误码
- */
-CalcError evaluateWithContext(ParserContext* context, double* result);
+CalcError evaluate(const char* expression, double* result, size_t* err_pos);
 
 #endif // CALCULATOR_H

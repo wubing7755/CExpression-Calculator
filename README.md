@@ -93,6 +93,46 @@ cmake --build .
 ./bin/calculator
 ```
 
+## 🧪 测试
+
+项目已集成 CTest，并支持在测试程序中按套件/关键字过滤测试。
+
+### 运行全部测试
+
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+### 运行指定测试套件
+
+```bash
+# 仅运行错误用例套件
+ctest --test-dir build -R calc_tests_error --output-on-failure
+```
+
+可用测试名：
+- `calc_tests_all`
+- `calc_tests_success`
+- `calc_tests_error`
+- `calc_tests_api`
+- `calc_tests_error_div0`（示例：带过滤参数）
+
+### 直接运行测试程序并过滤
+
+```bash
+# 查看支持的参数与用例
+./build/bin/test_calculator --help
+./build/bin/test_calculator --list
+
+# 仅跑成功用例
+./build/bin/test_calculator --suite=success
+
+# 仅跑错误用例中包含 1/0 的测试
+./build/bin/test_calculator --suite=error --filter=1/0
+```
+
 ### 直接使用 GCC 编译 (不推荐)
 
 ```bash

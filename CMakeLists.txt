@@ -38,6 +38,9 @@ project(CalcExpr
     LANGUAGES C
 )
 
+# CTest 开关（默认开启 BUILD_TESTING）
+include(CTest)
+
 # =============================================================================
 # 导出 compile_commands.json (VSCode IntelliSense)
 # =============================================================================
@@ -86,6 +89,15 @@ set(ALL_SOURCES ${CORE_SOURCES} ${PLATFORM_SOURCES})
 # =============================================================================
 add_executable(calculator ${ALL_SOURCES})
 
+# 单元测试可执行文件（不包含 main.c）
+if(BUILD_TESTING)
+    add_executable(calculator_tests
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/test_calculator.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/calculator.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.c
+    )
+endif()
+
 # =============================================================================
 # 头文件目录
 # =============================================================================
@@ -96,6 +108,15 @@ target_include_directories(calculator
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/platform
 )
+
+if(BUILD_TESTING)
+    target_include_directories(calculator_tests
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+endif()
 
 # =============================================================================
 # 平台检测与配置
@@ -117,6 +138,15 @@ if(MSVC)
     target_compile_options(calculator PRIVATE
         $<$<CONFIG:Release>:/O2 /Ob2 /DNDEBUG>
     )
+
+    if(BUILD_TESTING)
+        target_compile_options(calculator_tests PRIVATE
+            /W4
+            /permissive-
+            /utf-8
+            $<$<CONFIG:Release>:/O2 /Ob2 /DNDEBUG>
+        )
+    endif()
     
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     message(STATUS "[INFO] Using GCC/Clang compiler")
@@ -136,6 +166,17 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(calculator PRIVATE
         $<$<CONFIG:Debug>:-g -O0>
     )
+
+    if(BUILD_TESTING)
+        target_compile_options(calculator_tests PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Wshadow
+            $<$<CONFIG:Release>:-O2 -DNDEBUG>
+            $<$<CONFIG:Debug>:-g -O0>
+        )
+    endif()
 endif()
 
 # =============================================================================
@@ -144,8 +185,14 @@ endif()
 # 数学库 - Unix-like 系统需要, Windows 不需要
 if(UNIX AND NOT APPLE)
     target_link_libraries(calculator PRIVATE m)
+    if(BUILD_TESTING)
+        target_link_libraries(calculator_tests PRIVATE m)
+    endif()
 elseif(APPLE)
     target_link_libraries(calculator PRIVATE m)
+    if(BUILD_TESTING)
+        target_link_libraries(calculator_tests PRIVATE m)
+    endif()
 endif()
 
 # =============================================================================
@@ -156,12 +203,30 @@ set_target_properties(calculator PROPERTIES
     OUTPUT_NAME "calculator"
 )
 
+if(BUILD_TESTING)
+    set_target_properties(calculator_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        OUTPUT_NAME "test_calculator"
+    )
+endif()
+
 # =============================================================================
 # 安装规则
 # =============================================================================
 install(TARGETS calculator
     RUNTIME DESTINATION bin
 )
+
+# =============================================================================
+# CTest 注册
+# =============================================================================
+if(BUILD_TESTING)
+    add_test(NAME calc_tests_all COMMAND calculator_tests)
+    add_test(NAME calc_tests_success COMMAND calculator_tests --suite=success)
+    add_test(NAME calc_tests_error COMMAND calculator_tests --suite=error)
+    add_test(NAME calc_tests_api COMMAND calculator_tests --suite=api)
+    add_test(NAME calc_tests_error_div0 COMMAND calculator_tests --suite=error --filter=1/0)
+endif()
 
 # =============================================================================
 # 打印构建信息

@@ -1,272 +1,342 @@
 /*******************************************************************************
  * test_calculator.c - 计算器单元测试
- * 
- * 这是一个轻量级的单元测试框架，用于测试表达式计算器的功能
- * 
- * 测试覆盖：
- * - 基础运算：加法、减法、乘法、除法
- * - 运算符优先级
- * - 括号处理
- * - 负数处理
- * - 小数支持
- * - 错误输入处理
- * 
- * 编译方法：
- *   gcc -o test_calculator test_calculator.c ../src/calculator.c ../src/logger.c -lm
- * 
- * 运行方法：
+ *
+ * 编译示例:
+ *   gcc -o test_calculator test/test_calculator.c src/calculator.c src/logger.c -Iinclude -lm
+ *
+ * 运行示例:
  *   ./test_calculator
- * 
+ *   ./test_calculator --suite=error
+ *   ./test_calculator --filter=非法字符
  ******************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 #include "../include/calculator.h"
 #include "../include/token.h"
 
-/*=============================================================================
- * 测试框架（简单实现）
- *===========================================================================*/
+#define EPSILON 1e-6
 
-static int g_testsPassed = 0;
-static int g_testsFailed = 0;
+typedef struct {
+    const char* name;
+    const char* expression;
+    double expected;
+} SuccessCase;
 
-#define EPSILON 0.0001  // 浮点数比较的容差
+typedef struct {
+    const char* name;
+    const char* expression;
+    CalcError expected_error;
+    int exact_match;
+} ErrorCase;
 
-/**
- * 断言浮点数近似相等
- */
-#define ASSERT_DOUBLE_EQ(expr, expected, msg) do { \
-    double result; \
-    CalcError err = evaluate(expr, &result); \
-    if (err != CALC_OK || fabs(result - expected) > EPSILON) { \
-        printf("  FAIL: %s\n", msg); \
-        printf("    Expression: \"%s\"\n", expr); \
-        printf("    Expected: %.4f, Got: %.4f, Error: %d\n", expected, result, err); \
-        g_testsFailed++; \
-    } else { \
-        printf("  PASS: %s = %.2f\n", msg, result); \
-        g_testsPassed++; \
-    } \
-} while(0)
+typedef enum {
+    SUITE_SUCCESS = 1 << 0,
+    SUITE_ERROR = 1 << 1,
+    SUITE_API = 1 << 2,
+    SUITE_ALL = SUITE_SUCCESS | SUITE_ERROR | SUITE_API
+} SuiteMask;
 
-/**
- * 断言错误码
- */
-#define ASSERT_ERROR(expr, expectedErr, msg) do { \
-    double result; \
-    CalcError err = evaluate(expr, &result); \
-    if (err != expectedErr) { \
-        printf("  FAIL: %s\n", msg); \
-        printf("    Expression: \"%s\"\n", expr); \
-        printf("    Expected Error: %d, Got: %d\n", expectedErr, err); \
-        g_testsFailed++; \
-    } else { \
-        printf("  PASS: %s (correct error)\n", msg); \
-        g_testsPassed++; \
-    } \
-} while(0)
+static const SuccessCase g_success_cases[] = {
+    {"加法", "1+2", 3.0},
+    {"减法", "10-3", 7.0},
+    {"乘法", "2*3", 6.0},
+    {"除法", "7/2", 3.5},
+    {"优先级1", "2+3*4", 14.0},
+    {"优先级2", "(2+3)*4", 20.0},
+    {"负数1", "-5+3", -2.0},
+    {"负数2", "(-1)*(-1)", 1.0},
+    {"小数1", "0.5+0.25", 0.75},
+    {"小数2", ".5 + .5", 1.0},
+    {"链式", "100/2/5", 10.0},
+    {"复杂表达式", "((1+2)*(3-1))+5", 11.0},
+    {"空格容忍", "  3 + 4 * 2  ", 11.0}
+};
 
-/*=============================================================================
- * 测试用例
- *===========================================================================*/
+static const ErrorCase g_error_cases[] = {
+    {"空串", "", CALC_ERROR_NULL_EXPR, 1},
+    {"全空白", "   ", CALC_ERROR_UNEXPECTED_TOKEN, 1},
+    {"直接除零", "1/0", CALC_ERROR_DIV_BY_ZERO, 1},
+    {"间接除零", "1/(2-2)", CALC_ERROR_DIV_BY_ZERO, 1},
+    {"非法字符", "1+a", CALC_ERROR_INVALID_CHAR, 1},
+    {"双小数点", "1..2", CALC_ERROR_INVALID_CHAR, 0},
+    {"缺少右括号", "(1+2", CALC_ERROR_MISSING_RPAREN, 1},
+    {"多余右括号", "(1+2))", CALC_ERROR_SYNTAX, 1},
+    {"尾部运算符", "1+2+", CALC_ERROR_UNEXPECTED_TOKEN, 1},
+    {"孤立右括号", ")", CALC_ERROR_UNEXPECTED_TOKEN, 1},
+    {"多余数字", "1 2", CALC_ERROR_SYNTAX, 1}
+};
 
-/**
- * test_basic_operations - 测试基础运算
- */
-void test_basic_operations(void)
-{
-    printf("\n=== 测试基础运算 ===\n");
-    
-    // 加法
-    ASSERT_DOUBLE_EQ("1+2", 3.0, "1+2");
-    ASSERT_DOUBLE_EQ("10+20", 30.0, "10+20");
-    ASSERT_DOUBLE_EQ("0+5", 5.0, "0+5");
-    ASSERT_DOUBLE_EQ("1.5+2.5", 4.0, "1.5+2.5");
-    
-    // 减法
-    ASSERT_DOUBLE_EQ("5-3", 2.0, "5-3");
-    ASSERT_DOUBLE_EQ("10-20", -10.0, "10-20");
-    ASSERT_DOUBLE_EQ("100-50", 50.0, "100-50");
-    
-    // 乘法
-    ASSERT_DOUBLE_EQ("2*3", 6.0, "2*3");
-    ASSERT_DOUBLE_EQ("0*100", 0.0, "0*100");
-    ASSERT_DOUBLE_EQ("3.14*2", 6.28, "3.14*2");
-    
-    // 除法
-    ASSERT_DOUBLE_EQ("10/2", 5.0, "10/2");
-    ASSERT_DOUBLE_EQ("15/3", 5.0, "15/3");
-    ASSERT_DOUBLE_EQ("7/2", 3.5, "7/2");
+static const char* g_filter = NULL;
+static SuiteMask g_suite_mask = SUITE_ALL;
+static int g_tests_passed = 0;
+static int g_tests_failed = 0;
+static int g_tests_selected = 0;
+
+static void fail_case(const char* name, const char* expression, const char* reason) {
+    printf("  FAIL: %s\n", name);
+    printf("    Expression: \"%s\"\n", expression ? expression : "(null)");
+    printf("    Reason: %s\n", reason);
+    g_tests_failed++;
 }
 
-/**
- * test_operator_precedence - 测试运算符优先级
- */
-void test_operator_precedence(void)
-{
-    printf("\n=== 测试运算符优先级 ===\n");
-    
-    // 乘除 > 加减
-    ASSERT_DOUBLE_EQ("2+3*4", 14.0, "2+3*4 (mul before add)");
-    ASSERT_DOUBLE_EQ("10-2*3", 4.0, "10-2*3 (mul before sub)");
-    ASSERT_DOUBLE_EQ("2*3+4*5", 26.0, "2*3+4*5");
-    
-    // 除法优先级
-    ASSERT_DOUBLE_EQ("10+6/2", 13.0, "10+6/2");
-    ASSERT_DOUBLE_EQ("20/4+2", 7.0, "20/4+2");
+static void pass_case(const char* name, const char* detail) {
+    printf("  PASS: %s (%s)\n", name, detail);
+    g_tests_passed++;
 }
 
-/**
- * test_parentheses - 测试括号处理
- */
-void test_parentheses(void)
-{
-    printf("\n=== 测试括号处理 ===\n");
-    
-    // 基本括号
-    ASSERT_DOUBLE_EQ("(2+3)*4", 20.0, "(2+3)*4");
-    ASSERT_DOUBLE_EQ("(10-5)*2", 10.0, "(10-5)*2");
-    
-    // 嵌套括号
-    ASSERT_DOUBLE_EQ("((1+2))", 3.0, "((1+2))");
-    ASSERT_DOUBLE_EQ("((2+3)*2)", 10.0, "((2+3)*2)");
-    
-    // 括号改变优先级
-    ASSERT_DOUBLE_EQ("(2+3)*4", 20.0, "(2+3)*4 vs 2+3*4=14");
-    ASSERT_DOUBLE_EQ("2+(3*4)", 14.0, "2+(3*4)");
+static int case_matches_filter(const char* name, const char* expression) {
+    if (g_filter == NULL || *g_filter == '\0') {
+        return 1;
+    }
+    if (name != NULL && strstr(name, g_filter) != NULL) {
+        return 1;
+    }
+    if (expression != NULL && strstr(expression, g_filter) != NULL) {
+        return 1;
+    }
+    return 0;
 }
 
-/**
- * test_negative_numbers - 测试负数处理
- */
-void test_negative_numbers(void)
-{
-    printf("\n=== 测试负数处理 ===\n");
-    
-    // 一元负号
-    ASSERT_DOUBLE_EQ("-5+3", -2.0, "-5+3");
-    ASSERT_DOUBLE_EQ("-10", -10.0, "-10");
-    ASSERT_DOUBLE_EQ("-3*-2", 6.0, "-3*-2");
-    ASSERT_DOUBLE_EQ("(-1)*(-1)", 1.0, "(-1)*(-1)");
-    ASSERT_DOUBLE_EQ("(0-5)*6", -30.0, "(0-5)*6");
-    
-    // 复杂负数表达式
-    ASSERT_DOUBLE_EQ("-1-1", -2.0, "-1-1");
-    ASSERT_DOUBLE_EQ("(-5)+(-3)", -8.0, "(-5)+(-3)");
+static int parse_suite(const char* value, SuiteMask* out_mask) {
+    if (strcmp(value, "all") == 0) {
+        *out_mask = SUITE_ALL;
+        return 1;
+    }
+    if (strcmp(value, "success") == 0) {
+        *out_mask = SUITE_SUCCESS;
+        return 1;
+    }
+    if (strcmp(value, "error") == 0) {
+        *out_mask = SUITE_ERROR;
+        return 1;
+    }
+    if (strcmp(value, "api") == 0) {
+        *out_mask = SUITE_API;
+        return 1;
+    }
+    return 0;
 }
 
-/**
- * test_decimals - 测试小数支持
- */
-void test_decimals(void)
-{
-    printf("\n=== 测试小数支持 ===\n");
-    
-    ASSERT_DOUBLE_EQ("0.5+0.5", 1.0, "0.5+0.5");
-    ASSERT_DOUBLE_EQ("3.14159", 3.14159, "3.14159");
-    ASSERT_DOUBLE_EQ("1.5*2.5", 3.75, "1.5*2.5");
-    ASSERT_DOUBLE_EQ("10/4", 2.5, "10/4");
+static void print_usage(const char* prog) {
+    printf("Usage: %s [--suite=all|success|error|api] [--filter=TEXT] [--list] [--help]\n", prog);
 }
 
-/**
- * test_chained_operations - 测试链式运算
- */
-void test_chained_operations(void)
-{
-    printf("\n=== 测试链式运算 ===\n");
-    
-    ASSERT_DOUBLE_EQ("1+2+3", 6.0, "1+2+3");
-    ASSERT_DOUBLE_EQ("10-3-2", 5.0, "10-3-2");
-    ASSERT_DOUBLE_EQ("2*3*4", 24.0, "2*3*4");
-    ASSERT_DOUBLE_EQ("100/2/5", 10.0, "100/2/5");
-    ASSERT_DOUBLE_EQ("1+2+3+4+5", 15.0, "1+2+3+4+5");
+static void list_cases(void) {
+    size_t i;
+    printf("Suites: all, success, error, api\n");
+    printf("\n[success]\n");
+    for (i = 0; i < sizeof(g_success_cases) / sizeof(g_success_cases[0]); ++i) {
+        printf("  - %s | %s\n", g_success_cases[i].name, g_success_cases[i].expression);
+    }
+    printf("\n[error]\n");
+    for (i = 0; i < sizeof(g_error_cases) / sizeof(g_error_cases[0]); ++i) {
+        printf("  - %s | %s\n", g_error_cases[i].name, g_error_cases[i].expression);
+    }
+    printf("\n[api]\n");
+    printf("  - result=NULL\n");
+    printf("  - expression=NULL\n");
 }
 
-/**
- * test_complex_expressions - 测试复杂表达式
- */
-void test_complex_expressions(void)
-{
-    printf("\n=== 测试复杂表达式 ===\n");
-    
-    ASSERT_DOUBLE_EQ("(3-5)*6", -12.0, "(3-5)*6");
-    ASSERT_DOUBLE_EQ("2*(3+4)", 14.0, "2*(3+4)");
-    ASSERT_DOUBLE_EQ("(1+2)*(3+4)", 21.0, "(1+2)*(3+4)");
-    ASSERT_DOUBLE_EQ("10/(2+3)", 2.0, "10/(2+3)");
-    ASSERT_DOUBLE_EQ("((1+2)*(3-1))+5", 11.0, "((1+2)*(3-1))+5");
+static int parse_args(int argc, char** argv) {
+    int i;
+    for (i = 1; i < argc; ++i) {
+        const char* arg = argv[i];
+        if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+            print_usage(argv[0]);
+            return 1;
+        }
+        if (strcmp(arg, "--list") == 0) {
+            list_cases();
+            return 1;
+        }
+        if (strncmp(arg, "--filter=", 9) == 0) {
+            g_filter = arg + 9;
+            continue;
+        }
+        if (strcmp(arg, "--filter") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Missing value for --filter\n");
+                return -1;
+            }
+            g_filter = argv[++i];
+            continue;
+        }
+        if (strncmp(arg, "--suite=", 8) == 0) {
+            if (!parse_suite(arg + 8, &g_suite_mask)) {
+                fprintf(stderr, "Invalid suite: %s\n", arg + 8);
+                return -1;
+            }
+            continue;
+        }
+        if (strcmp(arg, "--suite") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Missing value for --suite\n");
+                return -1;
+            }
+            if (!parse_suite(argv[++i], &g_suite_mask)) {
+                fprintf(stderr, "Invalid suite: %s\n", argv[i]);
+                return -1;
+            }
+            continue;
+        }
+
+        fprintf(stderr, "Unknown argument: %s\n", arg);
+        print_usage(argv[0]);
+        return -1;
+    }
+    return 0;
 }
 
-/**
- * test_error_handling - 测试错误处理
- */
-void test_error_handling(void)
-{
-    printf("\n=== 测试错误处理 ===\n");
-    
-    // 空表达式
-    ASSERT_ERROR("", CALC_ERROR_NULL_EXPR, "空表达式");
-    
-    // NULL指针
-    // 注意：evaluate2内部会检查NULL
-    
-    // 除零错误（在计算过程中检测）
-    // 注意：当前实现返回0.0但可能不返回错误码
-    
-    // 无效字符
-    // 注意：当前实现会跳过无效字符或返回错误
+static void run_success_case(const SuccessCase* tc) {
+    double result = 0.0;
+    size_t err_pos = 0;
+    CalcError err = evaluate(tc->expression, &result, &err_pos);
+
+    if (err != CALC_OK) {
+        char buffer[160];
+        snprintf(buffer, sizeof(buffer), "expected CALC_OK, got %d at pos %zu", err, err_pos);
+        fail_case(tc->name, tc->expression, buffer);
+        return;
+    }
+
+    if (fabs(result - tc->expected) > EPSILON) {
+        char buffer[160];
+        snprintf(buffer, sizeof(buffer), "expected %.8f, got %.8f", tc->expected, result);
+        fail_case(tc->name, tc->expression, buffer);
+        return;
+    }
+
+    {
+        char detail[96];
+        snprintf(detail, sizeof(detail), "result=%.6f", result);
+        pass_case(tc->name, detail);
+    }
 }
 
-/**
- * test_zero_handling - 测试零处理
- */
-void test_zero_handling(void)
-{
-    printf("\n=== 测试零处理 ===\n");
-    
-    ASSERT_DOUBLE_EQ("0", 0.0, "0");
-    ASSERT_DOUBLE_EQ("0+0", 0.0, "0+0");
-    ASSERT_DOUBLE_EQ("0*100", 0.0, "0*100");
-    ASSERT_DOUBLE_EQ("0/5", 0.0, "0/5");
-    ASSERT_DOUBLE_EQ("5-5", 0.0, "5-5");
+static void run_error_case(const ErrorCase* tc) {
+    double result = 0.0;
+    size_t err_pos = 0;
+    CalcError err = evaluate(tc->expression, &result, &err_pos);
+
+    if (tc->exact_match) {
+        if (err != tc->expected_error) {
+            char buffer[160];
+            snprintf(buffer, sizeof(buffer), "expected error %d, got %d at pos %zu",
+                     tc->expected_error, err, err_pos);
+            fail_case(tc->name, tc->expression, buffer);
+            return;
+        }
+    } else if (err == CALC_OK) {
+        fail_case(tc->name, tc->expression, "expected non-OK error, got CALC_OK");
+        return;
+    }
+
+    {
+        char detail[96];
+        if (tc->exact_match) {
+            snprintf(detail, sizeof(detail), "error=%d pos=%zu", err, err_pos);
+        } else {
+            snprintf(detail, sizeof(detail), "non-OK error=%d pos=%zu", err, err_pos);
+        }
+        pass_case(tc->name, detail);
+    }
 }
 
-/*=============================================================================
- * 主函数
- *===========================================================================*/
+static void run_success_suite(void) {
+    size_t i;
+    printf("\n=== 成功用例 ===\n");
+    for (i = 0; i < sizeof(g_success_cases) / sizeof(g_success_cases[0]); ++i) {
+        const SuccessCase* tc = &g_success_cases[i];
+        if (!case_matches_filter(tc->name, tc->expression)) {
+            continue;
+        }
+        g_tests_selected++;
+        run_success_case(tc);
+    }
+}
 
-int main(void)
-{
+static void run_error_suite(void) {
+    size_t i;
+    printf("\n=== 错误用例 ===\n");
+    for (i = 0; i < sizeof(g_error_cases) / sizeof(g_error_cases[0]); ++i) {
+        const ErrorCase* tc = &g_error_cases[i];
+        if (!case_matches_filter(tc->name, tc->expression)) {
+            continue;
+        }
+        g_tests_selected++;
+        run_error_case(tc);
+    }
+}
+
+static void run_api_contract_suite(void) {
+    size_t err_pos = 0;
+    CalcError err;
+
+    printf("\n=== API 合约用例 ===\n");
+
+    if (case_matches_filter("result=NULL", "1+2,NULL")) {
+        g_tests_selected++;
+        err = evaluate("1+2", NULL, &err_pos);
+        if (err == CALC_ERROR_NULL_EXPR) {
+            pass_case("result=NULL", "returns CALC_ERROR_NULL_EXPR");
+        } else {
+            fail_case("result=NULL", "1+2", "did not return CALC_ERROR_NULL_EXPR");
+        }
+    }
+
+    if (case_matches_filter("expression=NULL", "NULL,NULL")) {
+        g_tests_selected++;
+        err = evaluate(NULL, NULL, &err_pos);
+        if (err == CALC_ERROR_NULL_EXPR) {
+            pass_case("expression=NULL", "returns CALC_ERROR_NULL_EXPR");
+        } else {
+            fail_case("expression=NULL", "(null)", "did not return CALC_ERROR_NULL_EXPR");
+        }
+    }
+}
+
+int main(int argc, char** argv) {
+    int parse_result = parse_args(argc, argv);
+    if (parse_result > 0) {
+        return 0;
+    }
+    if (parse_result < 0) {
+        return 2;
+    }
+
     printf("========================================\n");
     printf("     计算器单元测试\n");
     printf("========================================\n");
-    
-    // 运行所有测试
-    test_basic_operations();
-    test_operator_precedence();
-    test_parentheses();
-    test_negative_numbers();
-    test_decimals();
-    test_chained_operations();
-    test_complex_expressions();
-    test_error_handling();
-    test_zero_handling();
-    
-    // 打印测试结果
+
+    if (g_suite_mask & SUITE_SUCCESS) {
+        run_success_suite();
+    }
+    if (g_suite_mask & SUITE_ERROR) {
+        run_error_suite();
+    }
+    if (g_suite_mask & SUITE_API) {
+        run_api_contract_suite();
+    }
+
     printf("\n========================================\n");
     printf("     测试结果汇总\n");
     printf("========================================\n");
-    printf("通过: %d\n", g_testsPassed);
-    printf("失败: %d\n", g_testsFailed);
-    printf("总计: %d\n", g_testsPassed + g_testsFailed);
-    
-    if (g_testsFailed > 0) {
-        printf("\n❌ 有 %d 个测试失败！\n", g_testsFailed);
-        return 1;
-    } else {
-        printf("\n✅ 所有测试通过！\n");
-        return 0;
+    printf("筛选后执行: %d\n", g_tests_selected);
+    printf("通过: %d\n", g_tests_passed);
+    printf("失败: %d\n", g_tests_failed);
+    printf("总计: %d\n", g_tests_passed + g_tests_failed);
+
+    if (g_tests_selected == 0) {
+        printf("\n筛选后无匹配测试。\n");
+        return 2;
     }
+    if (g_tests_failed > 0) {
+        printf("\n有 %d 个测试失败。\n", g_tests_failed);
+        return 1;
+    }
+
+    printf("\n所有测试通过。\n");
+    return 0;
 }

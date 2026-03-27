@@ -158,15 +158,20 @@ int main(void)
         
         // 计算表达式
         double result = 0.0;
-        CalcError err = evaluate(input, &result);
+        size_t err_pos = 0;
+        CalcError err = evaluate(input, &result, &err_pos);
         
         if (err == CALC_OK) {
             // 计算成功，打印结果
             printResult(input, result);
         } else {
             // 计算失败
-            logger_log(LOG_ERROR, "错误: %s\n", parserGetErrorMessage(err));
-            logger_log(LOG_INFO, "\n");
+            if (err_pos > 0 && err_pos < strlen(input)) {
+                logger_log(LOG_ERROR, "错误: %s (位置: %zu, 附近: '%.10s')\n",
+                           parserGetErrorMessage(err), err_pos, input + err_pos);
+            } else {
+                logger_log(LOG_ERROR, "错误: %s\n", parserGetErrorMessage(err));
+            }
         }
     }
     

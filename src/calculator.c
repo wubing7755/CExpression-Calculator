@@ -15,8 +15,14 @@
 #include <stdbool.h>
 #include <math.h>
 #include <ctype.h>
+#include <errno.h>
+#include <float.h>
 #include "token.h"
 #include "logger.h"
+
+#define EPSILON 1e-12
+#define NUM_BUF_SIZE 128        /* 含终止符 */
+#define NUM_MAX_DIGITS 100      /* 逻辑上允许的最长数字 */
 
 /*=============================================================================
  * 错误消息映射
@@ -76,6 +82,8 @@ void parserInit(ParserContext* context, const char* expression)
     context->pos = 0;
     context->currentToken.type = TOKEN_ERROR;
     context->currentToken.value = 0.0;
+    context->err = CALC_OK;
+    context->err_pos = 0;
 }
 
 /**
@@ -110,7 +118,7 @@ void parserGetNextToken(ParserContext* context)
     context->currentToken.type = TOKEN_ERROR;
     
     // 检查是否到达末尾
-    if (context->pos >= context->length) {
+    if (context->pos >= context->length || context->expression[context->pos] == '\0') {
         context->currentToken.type = TOKEN_END;
         return;
     }
@@ -127,55 +135,87 @@ void parserGetNextToken(ParserContext* context)
     // 数字 - 读取连续的数字字符和小数点
     // 支持小数开头（如 .5）或数字开头（如 5, 5.5）
     // 注意：必须确保 isdigit 接收到的是 unsigned char 范围内的值
-    if (isdigit(c) || (c == '.' && context->pos + 1 < context->length && isdigit((unsigned char)context->expression[context->pos + 1]))) {
-        #define NUM_BUF_SIZE 64
-        char numStr[NUM_BUF_SIZE] = {0};
-        char* p = numStr;
-        char* pEnd = numStr + NUM_BUF_SIZE - 1;  // 保留一个位置给终止符
+     if (isdigit(c) || (c == '.' && context->pos + 1 < context->length &&
+                       isdigit((unsigned char)context->expression[context->pos + 1]))) {
+
+        char buf[NUM_BUF_SIZE] = {0};
+        size_t n = 0;
         int hasDot = 0;
-        
-        // 读取整数部分或小数部分
-        while (p < pEnd && context->pos < context->length) {
+
+        while (n < NUM_MAX_DIGITS && context->pos < context->length) {
             unsigned char ch = (unsigned char)context->expression[context->pos];
-            
             if (isdigit(ch)) {
-                *p++ = (char)ch;
+                buf[n++] = (char)ch;
                 context->pos++;
             } else if (ch == '.' && !hasDot) {
-                // 小数点后可以继续读取数字
-                *p++ = (char)ch;
+                buf[n++] = (char)ch;
                 hasDot = 1;
                 context->pos++;
             } else {
                 break;
             }
         }
-        *p = '\0';
-        
+
+        /* 过长直接报错 */
+        if (n >= NUM_MAX_DIGITS) {
+            context->err = CALC_ERROR_INVALID_CHAR;
+            context->err_pos = context->pos;
+            logger_log(LOG_DEBUG, "Number literal too long at pos=%zu", context->pos);
+            return;
+        }
+
+        buf[n] = '\0';
+        errno = 0;
+        char* endp = NULL;
+        double v = strtod(buf, &endp);
+
+        /* strtod 失败或溢出 */
+        if (endp == buf || errno == ERANGE || !isfinite(v)) {
+            context->err = CALC_ERROR_INVALID_CHAR;
+            context->err_pos = context->pos;
+            logger_log(LOG_DEBUG, "Invalid number literal at pos=%zu", context->pos);
+            return;
+        }
+
         context->currentToken.type = TOKEN_NUMBER;
-        context->currentToken.value = atof(numStr);
+        context->currentToken.value = v;
         return;
     }
     
-    // 运算符和括号 - 使用数组索引简化
-    static const TokenType charToToken[256] = {
-        ['+'] = TOKEN_PLUS,
-        ['-'] = TOKEN_MINUS,
-        ['*'] = TOKEN_MUL,
-        ['/'] = TOKEN_DIV,
-        ['('] = TOKEN_LPAREN,
-        [')'] = TOKEN_RPAREN
-    };
-    
-    // 检查是否为已知运算符
-    if (charToToken[c] != TOKEN_ERROR) {
-        context->currentToken.type = charToToken[c];
-        context->pos++;
-        return;
+    // 运算符和括号
+    switch (c) {
+        case '+':
+            context->currentToken.type = TOKEN_PLUS;
+            context->pos++;
+            return;
+        case '-':
+            context->currentToken.type = TOKEN_MINUS;
+            context->pos++;
+            return;
+        case '*':
+            context->currentToken.type = TOKEN_MUL;
+            context->pos++;
+            return;
+        case '/':
+            context->currentToken.type = TOKEN_DIV;
+            context->pos++;
+            return;
+        case '(':
+            context->currentToken.type = TOKEN_LPAREN;
+            context->pos++;
+            return;
+        case ')':
+            context->currentToken.type = TOKEN_RPAREN;
+            context->pos++;
+            return;
+        default:
+            break;
     }
     
     // 未知字符
-    context->currentToken.type = TOKEN_ERROR;
+    context->err = CALC_ERROR_INVALID_CHAR;
+    context->err_pos = context->pos;
+    logger_log(LOG_DEBUG, "Unknown character '%c' at pos=%zu", c, context->pos);
     context->pos++;
 }
 
@@ -185,6 +225,10 @@ void parserGetNextToken(ParserContext* context)
  */
 double parserParseFactor(ParserContext* context)
 {
+    if (context->err != CALC_OK) {
+        return 0.0;
+    }
+
     int sign = 1;
     
     if (context->currentToken.type == TOKEN_MINUS) {
@@ -199,7 +243,9 @@ double parserParseFactor(ParserContext* context)
         double expr = parserParseExpression(context);
         
         if (context->currentToken.type != TOKEN_RPAREN) {
-            logger_log(LOG_ERROR, "Missing closing parenthesis");
+            context->err = CALC_ERROR_MISSING_RPAREN;
+            context->err_pos = context->pos;
+            logger_log(LOG_DEBUG, "Missing closing parenthesis at pos=%zu", context->pos);
             return 0.0;
         }
         
@@ -213,7 +259,11 @@ double parserParseFactor(ParserContext* context)
         return sign * num;
     }
     
-    logger_log(LOG_ERROR, "Unexpected token in factor");
+    if (context->err == CALC_OK) {
+        context->err = CALC_ERROR_UNEXPECTED_TOKEN;
+        context->err_pos = context->pos;
+        logger_log(LOG_DEBUG, "Unexpected token in factor at pos=%zu", context->pos);
+    }
     return 0.0;
 }
 
@@ -223,10 +273,18 @@ double parserParseFactor(ParserContext* context)
  */
 double parserParseTerm(ParserContext* context)
 {
+    if (context->err != CALC_OK) {
+        return 0.0;
+    }
+
     double result = parserParseFactor(context);
     
     while (context->currentToken.type == TOKEN_MUL || 
            context->currentToken.type == TOKEN_DIV) {
+        if (context->err != CALC_OK) {
+            return 0.0;
+        }
+
         TokenType op = context->currentToken.type;
         parserGetNextToken(context);
         double right = parserParseFactor(context);
@@ -234,8 +292,11 @@ double parserParseTerm(ParserContext* context)
         if (op == TOKEN_MUL) {
             result = result * right;
         } else {
-            if (right == 0.0) {
-                logger_log(LOG_ERROR, "Division by zero!");
+            if (fabs(right) < EPSILON)
+            {
+                context->err = CALC_ERROR_DIV_BY_ZERO;
+                context->err_pos = context->pos;
+                logger_log(LOG_DEBUG, "Division by zero at pos=%zu", context->pos);
                 return 0.0;
             }
             result = result / right;
@@ -251,10 +312,18 @@ double parserParseTerm(ParserContext* context)
  */
 double parserParseExpression(ParserContext* context)
 {
+    if (context->err != CALC_OK) {
+        return 0.0;
+    }
+
     double result = parserParseTerm(context);
     
     while (context->currentToken.type == TOKEN_PLUS || 
            context->currentToken.type == TOKEN_MINUS) {
+        if (context->err != CALC_OK) {
+            return 0.0;
+        }
+
         TokenType op = context->currentToken.type;
         parserGetNextToken(context);
         double right = parserParseTerm(context);
@@ -276,10 +345,11 @@ double parserParseExpression(ParserContext* context)
 /**
  * evaluate - 表达式求值主函数
  */
-CalcError evaluate(const char* expression, double* result)
+CalcError evaluate(const char* expression, double* result, size_t* err_pos)
 {
     // 检查空表达式
-    if (expression == NULL || *expression == '\0') {
+    if (expression == NULL || *expression == '\0' || result == NULL) {
+        if (err_pos) *err_pos = 0;
         return CALC_ERROR_NULL_EXPR;
     }
     
@@ -291,28 +361,18 @@ CalcError evaluate(const char* expression, double* result)
     parserGetNextToken(&context);
     
     // 解析表达式
-    *result = parserParseExpression(&context);
-    
-    // 检查是否所有Token都已处理完毕
-    if (context.currentToken.type != TOKEN_END && 
-        context.currentToken.type != TOKEN_RPAREN) {
-        logger_log(LOG_WARNING, "Extra tokens after expression");
-    }
-    
-    return CALC_OK;
-}
+    double val = parserParseExpression(&context);
 
-/**
- * evaluateWithContext - 使用ParserContext进行求值
- */
-CalcError evaluateWithContext(ParserContext* context, double* result)
-{
-    if (context == NULL || context->expression == NULL) {
-        return CALC_ERROR_NULL_EXPR;
+    if (context.err != CALC_OK) {
+        if (err_pos) *err_pos = context.err_pos;
+        return context.err;
     }
-    
-    parserGetNextToken(context);
-    *result = parserParseExpression(context);
-    
+    if (context.currentToken.type != TOKEN_END) {
+        if (err_pos) *err_pos = context.pos;
+        return CALC_ERROR_SYNTAX;
+    }
+
+    *result = val;
+    if (err_pos) *err_pos = 0;
     return CALC_OK;
 }

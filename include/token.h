@@ -8,6 +8,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <stddef.h>
+
 /**
  * Token 类型枚举
  * 
@@ -35,6 +37,19 @@ typedef enum {
 } TokenType;
 
 /**
+ * 错误码枚举
+ */
+typedef enum {
+    CALC_OK = 0,                    // 计算成功
+    CALC_ERROR_NULL_EXPR,           // 表达式为空
+    CALC_ERROR_INVALID_CHAR,        // 无效字符
+    CALC_ERROR_DIV_BY_ZERO,         // 除零错误
+    CALC_ERROR_UNEXPECTED_TOKEN,    // 意外的Token
+    CALC_ERROR_MISSING_RPAREN,      // 缺少右括号
+    CALC_ERROR_SYNTAX               // 语法错误
+} CalcError;
+
+/**
  * Token 结构体
  * 
  * 作用：存储一个完整的标记信息
@@ -60,20 +75,9 @@ typedef struct {
     size_t length;           // 表达式长度
     size_t pos;              // 当前字符位置
     Token currentToken;      // 当前 Token
+    CalcError err;           // 错误标志
+    size_t err_pos;          // 错误位置
 } ParserContext;
-
-/**
- * 错误码枚举
- */
-typedef enum {
-    CALC_OK = 0,                    // 计算成功
-    CALC_ERROR_NULL_EXPR,           // 表达式为空
-    CALC_ERROR_INVALID_CHAR,        // 无效字符
-    CALC_ERROR_DIV_BY_ZERO,         // 除零错误
-    CALC_ERROR_UNEXPECTED_TOKEN,    // 意外的Token
-    CALC_ERROR_MISSING_RPAREN,      // 缺少右括号
-    CALC_ERROR_SYNTAX               // 语法错误
-} CalcError;
 
 /*=============================================================================
  * 函数声明
