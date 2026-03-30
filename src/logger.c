@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 #include <stdarg.h>
+#include <string.h>
 #include "logger.h"
 
 /* -------------------------------------------------------------------------
@@ -32,7 +32,12 @@ LogLevel logger_get_level(void) {
 }
 
 void logger_log(LogLevel level, const char* format, ...) {
+    size_t format_len;
+
     if (level < g_log_level) {
+        return;
+    }
+    if (format == NULL) {
         return;
     }
 
@@ -58,8 +63,10 @@ void logger_log(LogLevel level, const char* format, ...) {
     vfprintf(out, format, args);
     va_end(args);
 
-    /* 关键日志即时落盘，避免崩溃时丢失 */
-    if (level >= LOG_WARNING) {
+    format_len = strlen(format);
+
+    /* 错误日志和未换行输出立即刷新，避免提示符滞后。 */
+    if (level >= LOG_WARNING || format_len == 0 || format[format_len - 1] != '\n') {
         fflush(out);
     }
 }

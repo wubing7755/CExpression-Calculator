@@ -2,7 +2,7 @@
  * test_calculator.c - 计算器单元测试
  *
  * 编译示例:
- *   gcc -o test_calculator test/test_calculator.c src/calculator.c src/logger.c -Iinclude -lm
+ *   gcc -o test_calculator test/test_calculator.c src/calculator.c src/lexer.c src/parser.c src/logger.c -Iinclude -lm
  *
  * 运行示例:
  *   ./test_calculator
@@ -12,9 +12,10 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../include/calculator.h"
-#include "../include/token.h"
+#include "../include/command.h"
 
 #define EPSILON 1e-6
 
@@ -49,6 +50,8 @@ static const SuccessCase g_success_cases[] = {
     {"负数2", "(-1)*(-1)", 1.0},
     {"小数1", "0.5+0.25", 0.75},
     {"小数2", ".5 + .5", 1.0},
+    {"科学计数法", "1e2+3", 103.0},
+    {"微小非零除数", "1/0.0000000000001", 10000000000000.0},
     {"链式", "100/2/5", 10.0},
     {"复杂表达式", "((1+2)*(3-1))+5", 11.0},
     {"空格容忍", "  3 + 4 * 2  ", 11.0}
@@ -73,6 +76,19 @@ static SuiteMask g_suite_mask = SUITE_ALL;
 static int g_tests_passed = 0;
 static int g_tests_failed = 0;
 static int g_tests_selected = 0;
+static int g_trace_calls = 0;
+
+static int almost_equal(double lhs, double rhs) {
+    const double diff = fabs(lhs - rhs);
+    const double scale = fmax(1.0, fmax(fabs(lhs), fabs(rhs)));
+    return diff <= EPSILON * scale;
+}
+
+static void trace_counter_cb(void* user_data, const CalcStepInfo* step) {
+    (void)user_data;
+    (void)step;
+    g_trace_calls++;
+}
 
 static void fail_case(const char* name, const char* expression, const char* reason) {
     printf("  FAIL: %s\n", name);
@@ -137,6 +153,9 @@ static void list_cases(void) {
     printf("\n[api]\n");
     printf("  - result=NULL\n");
     printf("  - expression=NULL\n");
+    printf("  - recursion-limit\n");
+    printf("  - evaluate-step-hook\n");
+    printf("  - command-dispatch\n");
 }
 
 static int parse_args(int argc, char** argv) {
@@ -192,7 +211,7 @@ static int parse_args(int argc, char** argv) {
 static void run_success_case(const SuccessCase* tc) {
     double result = 0.0;
     size_t err_pos = 0;
-    CalcError err = evaluate(tc->expression, &result, &err_pos);
+    CalcError err = evaluate(tc->expression, NULL, &result, &err_pos);
 
     if (err != CALC_OK) {
         char buffer[160];
@@ -201,7 +220,7 @@ static void run_success_case(const SuccessCase* tc) {
         return;
     }
 
-    if (fabs(result - tc->expected) > EPSILON) {
+    if (!almost_equal(result, tc->expected)) {
         char buffer[160];
         snprintf(buffer, sizeof(buffer), "expected %.8f, got %.8f", tc->expected, result);
         fail_case(tc->name, tc->expression, buffer);
@@ -218,7 +237,7 @@ static void run_success_case(const SuccessCase* tc) {
 static void run_error_case(const ErrorCase* tc) {
     double result = 0.0;
     size_t err_pos = 0;
-    CalcError err = evaluate(tc->expression, &result, &err_pos);
+    CalcError err = evaluate(tc->expression, NULL, &result, &err_pos);
 
     if (tc->exact_match) {
         if (err != tc->expected_error) {
@@ -278,7 +297,7 @@ static void run_api_contract_suite(void) {
 
     if (case_matches_filter("result=NULL", "1+2,NULL")) {
         g_tests_selected++;
-        err = evaluate("1+2", NULL, &err_pos);
+        err = evaluate("1+2", NULL, NULL, &err_pos);
         if (err == CALC_ERROR_NULL_EXPR) {
             pass_case("result=NULL", "returns CALC_ERROR_NULL_EXPR");
         } else {
@@ -288,12 +307,102 @@ static void run_api_contract_suite(void) {
 
     if (case_matches_filter("expression=NULL", "NULL,NULL")) {
         g_tests_selected++;
-        err = evaluate(NULL, NULL, &err_pos);
+        err = evaluate(NULL, NULL, NULL, &err_pos);
         if (err == CALC_ERROR_NULL_EXPR) {
             pass_case("expression=NULL", "returns CALC_ERROR_NULL_EXPR");
         } else {
             fail_case("expression=NULL", "(null)", "did not return CALC_ERROR_NULL_EXPR");
         }
+    }
+
+    if (case_matches_filter("recursion-limit", "((((...))))")) {
+        const size_t depth = 320;
+        const size_t expr_len = depth * 2 + 1;
+        double value = 0.0;
+        char* expr = (char*)malloc(expr_len + 1);
+        g_tests_selected++;
+
+        if (expr == NULL) {
+            fail_case("recursion-limit", "(oom)", "malloc failed");
+            return;
+        }
+
+        memset(expr, '(', depth);
+        expr[depth] = '1';
+        memset(expr + depth + 1, ')', depth);
+        expr[expr_len] = '\0';
+
+        err = evaluate(expr, NULL, &value, &err_pos);
+
+        if (err == CALC_ERROR_RECURSION_LIMIT) {
+            pass_case("recursion-limit", "returns CALC_ERROR_RECURSION_LIMIT");
+        } else {
+            char detail[128];
+            snprintf(detail, sizeof(detail), "expected %d, got %d at pos %zu",
+                     CALC_ERROR_RECURSION_LIMIT, err, err_pos);
+            fail_case("recursion-limit", expr, detail);
+        }
+
+        free(expr);
+    }
+
+    if (case_matches_filter("evaluate-step-hook", "2+3*4")) {
+        CalcEvalOptions options;
+        double value = 0.0;
+        g_tests_selected++;
+        g_trace_calls = 0;
+        calcEvalOptionsInit(&options);
+        options.on_step = trace_counter_cb;
+        options.measure_step_time = true;
+        err = evaluate("2+3*4", &options, &value, &err_pos);
+        if (err == CALC_OK && almost_equal(value, 14.0) && g_trace_calls > 0) {
+            pass_case("evaluate-step-hook", "returns CALC_OK and emits step events");
+        } else {
+            char detail[160];
+            snprintf(detail, sizeof(detail),
+                     "unexpected result: err=%d value=%.10g trace_calls=%d",
+                     err, value, g_trace_calls);
+            fail_case("evaluate-step-hook", "2+3*4", detail);
+        }
+    }
+
+    if (case_matches_filter("command-dispatch", "show process")) {
+        CommandState state;
+        CommandResult cmd;
+        g_tests_selected++;
+        commandStateInit(&state);
+
+        cmd = commandDispatch("show process", &state);
+        if (cmd != COMMAND_RESULT_HANDLED || !state.show_process) {
+            fail_case("command-dispatch", "show process", "failed to enable process mode");
+            return;
+        }
+
+        cmd = commandDispatch("hide process", &state);
+        if (cmd != COMMAND_RESULT_HANDLED || state.show_process) {
+            fail_case("command-dispatch", "hide process", "failed to disable process mode");
+            return;
+        }
+
+        cmd = commandDispatch("show help", &state);
+        if (cmd != COMMAND_RESULT_HANDLED) {
+            fail_case("command-dispatch", "show help", "failed to execute help command");
+            return;
+        }
+
+        cmd = commandDispatch("show unknown", &state);
+        if (cmd != COMMAND_RESULT_ERROR) {
+            fail_case("command-dispatch", "show unknown", "unknown command did not return error");
+            return;
+        }
+
+        cmd = commandDispatch("2+3", &state);
+        if (cmd != COMMAND_RESULT_NOT_COMMAND) {
+            fail_case("command-dispatch", "2+3", "expression was incorrectly treated as command");
+            return;
+        }
+
+        pass_case("command-dispatch", "dispatcher works as expected");
     }
 }
 

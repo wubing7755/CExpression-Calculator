@@ -68,6 +68,9 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/calculator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/command.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.c
 )
 
@@ -94,6 +97,9 @@ if(BUILD_TESTING)
     add_executable(calculator_tests
         ${CMAKE_CURRENT_SOURCE_DIR}/test/test_calculator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/calculator.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/command.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.c
     )
 endif()
