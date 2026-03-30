@@ -2,7 +2,7 @@
  * test_calculator.c - 计算器单元测试
  *
  * 编译示例:
- *   gcc -o test_calculator test/test_calculator.c src/calculator.c src/logger.c -Iinclude -lm
+ *   gcc -o test_calculator test/test_calculator.c src/calculator.c src/lexer.c src/parser.c src/logger.c -Iinclude -lm
  *
  * 运行示例:
  *   ./test_calculator
@@ -12,9 +12,9 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../include/calculator.h"
-#include "../include/token.h"
 
 #define EPSILON 1e-6
 
@@ -49,6 +49,8 @@ static const SuccessCase g_success_cases[] = {
     {"负数2", "(-1)*(-1)", 1.0},
     {"小数1", "0.5+0.25", 0.75},
     {"小数2", ".5 + .5", 1.0},
+    {"科学计数法", "1e2+3", 103.0},
+    {"微小非零除数", "1/0.0000000000001", 10000000000000.0},
     {"链式", "100/2/5", 10.0},
     {"复杂表达式", "((1+2)*(3-1))+5", 11.0},
     {"空格容忍", "  3 + 4 * 2  ", 11.0}
@@ -73,6 +75,12 @@ static SuiteMask g_suite_mask = SUITE_ALL;
 static int g_tests_passed = 0;
 static int g_tests_failed = 0;
 static int g_tests_selected = 0;
+
+static int almost_equal(double lhs, double rhs) {
+    const double diff = fabs(lhs - rhs);
+    const double scale = fmax(1.0, fmax(fabs(lhs), fabs(rhs)));
+    return diff <= EPSILON * scale;
+}
 
 static void fail_case(const char* name, const char* expression, const char* reason) {
     printf("  FAIL: %s\n", name);
@@ -137,6 +145,7 @@ static void list_cases(void) {
     printf("\n[api]\n");
     printf("  - result=NULL\n");
     printf("  - expression=NULL\n");
+    printf("  - recursion-limit\n");
 }
 
 static int parse_args(int argc, char** argv) {
@@ -201,7 +210,7 @@ static void run_success_case(const SuccessCase* tc) {
         return;
     }
 
-    if (fabs(result - tc->expected) > EPSILON) {
+    if (!almost_equal(result, tc->expected)) {
         char buffer[160];
         snprintf(buffer, sizeof(buffer), "expected %.8f, got %.8f", tc->expected, result);
         fail_case(tc->name, tc->expression, buffer);
@@ -294,6 +303,37 @@ static void run_api_contract_suite(void) {
         } else {
             fail_case("expression=NULL", "(null)", "did not return CALC_ERROR_NULL_EXPR");
         }
+    }
+
+    if (case_matches_filter("recursion-limit", "((((...))))")) {
+        const size_t depth = 320;
+        const size_t expr_len = depth * 2 + 1;
+        double value = 0.0;
+        char* expr = (char*)malloc(expr_len + 1);
+        g_tests_selected++;
+
+        if (expr == NULL) {
+            fail_case("recursion-limit", "(oom)", "malloc failed");
+            return;
+        }
+
+        memset(expr, '(', depth);
+        expr[depth] = '1';
+        memset(expr + depth + 1, ')', depth);
+        expr[expr_len] = '\0';
+
+        err = evaluate(expr, &value, &err_pos);
+
+        if (err == CALC_ERROR_RECURSION_LIMIT) {
+            pass_case("recursion-limit", "returns CALC_ERROR_RECURSION_LIMIT");
+        } else {
+            char detail[128];
+            snprintf(detail, sizeof(detail), "expected %d, got %d at pos %zu",
+                     CALC_ERROR_RECURSION_LIMIT, err, err_pos);
+            fail_case("recursion-limit", expr, detail);
+        }
+
+        free(expr);
     }
 }
 

@@ -133,16 +133,6 @@ ctest --test-dir build -R calc_tests_error --output-on-failure
 ./build/bin/test_calculator --suite=error --filter=1/0
 ```
 
-### 直接使用 GCC 编译 (不推荐)
-
-```bash
-# Windows
-gcc src/main.c src/calculator.c -o calculator.exe -lm
-
-# Linux / macOS
-gcc src/main.c src/calculator.c -o calculator -lm
-```
-
 ### 使用示例
 
 ```
