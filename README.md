@@ -26,23 +26,40 @@
 - ✅ 运算符优先级（乘除 > 加减）
 - ✅ 支持小数
 - ✅ 命令行交互界面
+- ✅ 调试系统（支持 --debug 参数查看解析过程）
 
 ## 🛠️ 技术栈
 
-- **编程语言**: C (C11)
-- **构建工具**: CMake / GCC
+- **编程语言**: C (C99)
+- **构建工具**: CMake / GCC / MinGW
 - **算法**: 递归下降解析器
+- **调试**: 运行时参数控制 (--debug)
 
 ## 📁 文件结构
 
 ```
 CalcExpr/
-├── main.c           # 主程序入口
-├── calculator.c     # 计算器核心逻辑（待实现）
-├── calculator.h     # 计算器头文件
-├── token.h          # Token 类型定义
-├── CMakeLists.txt   # CMake 构建配置
-└── README.md        # 项目说明
+├── src/                    # 源代码
+│   ├── main.c            # 主程序入口
+│   ├── calculator.c       # 计算器公共接口
+│   ├── parser.c          # 递归下降解析器
+│   ├── lexer.c           # 词法分析器
+│   ├── command.c         # 命令行命令处理
+│   ├── logger.c          # 日志系统
+│   ├── debug.c           # 调试系统
+│   └── platform/          # 平台相关代码
+├── include/               # 头文件
+│   ├── calculator.h      # 公共接口
+│   ├── parser.h         # 解析器接口
+│   ├── lexer.h          # 词法分析器接口
+│   ├── command.h        # 命令接口
+│   ├── logger.h         # 日志接口
+│   ├── debug.h          # 调试宏接口
+│   └── parser_debug.h    # 解析器调试宏
+├── test/                  # 单元测试
+├── CMakeLists.txt        # CMake 构建配置
+├── build_debug.bat       # Windows 调试构建脚本
+└── README.md             # 项目说明
 ```
 
 ## 🚀 快速开始
@@ -166,30 +183,81 @@ ctest --test-dir build -R calc_tests_error --output-on-failure
 ### 2. 词法分析 (Lexer)
 
 将输入字符串分解为 Token（标记）：
-- 数字: `123`, `45.67`
+- 数字: `123`, `45.67`, `1e-3`
 - 运算符: `+`, `-`, `*`, `/`
 - 括号: `(`, `)`
+- 结束标记: `END`
 
 ### 3. 模块化设计
 
-- `token.h` - Token 类型定义
-- `calculator.c` - 计算逻辑
-- `main.c` - 用户交互
+- `lexer.h/c` - 词法分析器
+- `parser.h/c` - 递归下降解析器
+- `calculator.h/c` - 计算器公共接口
+- `command.h/c` - 命令行命令处理
+- `logger.h/c` - 统一日志系统
+- `debug.h/c` - 调试宏系统
 
 ### 4. 调试系统
 
-项目提供了可开关的调试系统，用于学习递归下降解析器的执行过程。
+项目提供了统一的调试系统，支持在运行时通过命令行参数开启，用于学习递归下降解析器的执行过程。
+
+#### 编译时启用
+
+构建时需添加 `-DENABLE_DEBUG=ON`：
+
+```bash
+# Windows
+cmake -G "MinGW Makefiles" -DENABLE_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -S . -B build
+cmake --build build
+
+# 或使用项目提供的构建脚本
+build_debug.bat
+```
+
+#### 命令行参数
+
+| 参数 | 说明 |
+|------|------|
+| `--debug` | 开启调试模式 |
+| `--debug-level=N` | 设置调试级别 (0-5) |
+| `--debug-module=NAME` | 设置模块 (lexer/parser/calc/main/all) |
 
 #### 调试级别
 
 | 级别 | 值 | 说明 |
 |------|------|------|
-| `PARSER_DEBUG_NONE` | 0 | 关闭所有调试输出 |
-| `PARSER_DEBUG_ERROR` | 1 | 错误信息 |
-| `PARSER_DEBUG_TOKEN` | 2 | Token 流转跟踪 |
-| `PARSER_DEBUG_CALL` | 4 | 函数调用进入/退出 |
+| `DEBUG_LEVEL_NONE` | 0 | 关闭所有调试输出 |
+| `DEBUG_LEVEL_ERROR` | 1 | 仅错误信息 |
+| `DEBUG_LEVEL_WARN` | 2 | 警告及以上 |
+| `DEBUG_LEVEL_INFO` | 3 | 信息及以上 |
+| `DEBUG_LEVEL_DEBUG` | 4 | 调试及以上（Lexer Token 输出） |
+| `DEBUG_LEVEL_TRACE` | 5 | 跟踪模式（Parser 函数调用树 + 中间计算结果） |
 
-**注意**：这些值可以组合使用，如 `PARSER_DEBUG_ERROR | PARSER_DEBUG_CALL = 5`。
+#### 调试输出示例
+
+输入 `2+3*4` with `--debug --debug-level=5`：
+
+```
+[LEXER] NUM@0 | PLUS@1 | NUM@2 | MUL@3 | NUM@4 | END@5
+[PARSER] │   parseExpression()
+[PARSER] │   parseTerm()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] │   parseTerm()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] 3 * 4 = 12
+[PARSER] 2 + 12 = 14
+表达式: 2+3*4
+结果:   14
+```
+
+输出说明：
+- `[LEXER]` 行显示所有 Token（类型@位置）
+- `[PARSER]` 行显示解析器函数调用树和中间计算结果
+- 缩进表示递归深度
 
 ## 🤝 如何贡献
 

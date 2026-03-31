@@ -63,6 +63,21 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 # =============================================================================
+# 调试系统配置
+# =============================================================================
+option(ENABLE_DEBUG "Enable debug macro system (零开销 when OFF)" OFF)
+
+if(ENABLE_DEBUG)
+    message(STATUS "[DEBUG] Debug system ENABLED")
+    add_compile_definitions(DEBUG_ENABLE=1)
+    add_compile_definitions(DEBUG_DEFAULT_LEVEL=5)  # TRACE level
+    add_compile_definitions(DEBUG_DEFAULT_MODULE=0xFF)  # ALL modules
+else()
+    message(STATUS "[DEBUG] Debug system disabled (zero overhead)")
+    add_compile_definitions(DEBUG_ENABLE=0)
+endif()
+
+# =============================================================================
 # 源文件 - 按模块组织
 # =============================================================================
 set(CORE_SOURCES
@@ -73,6 +88,11 @@ set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.c
 )
+
+# debug.c 仅在 ENABLE_DEBUG=ON 时编译
+if(ENABLE_DEBUG)
+    list(APPEND CORE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/debug.c)
+endif()
 
 # 平台特定源文件
 set(PLATFORM_SOURCES)
@@ -94,7 +114,7 @@ add_executable(calculator ${ALL_SOURCES})
 
 # 单元测试可执行文件（不包含 main.c）
 if(BUILD_TESTING)
-    add_executable(calculator_tests
+    set(TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/test/test_calculator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/calculator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/command.c
@@ -102,6 +122,10 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/logger.c
     )
+    if(ENABLE_DEBUG)
+        list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/debug.c)
+    endif()
+    add_executable(calculator_tests ${TEST_SOURCES})
 endif()
 
 # =============================================================================

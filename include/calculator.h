@@ -47,7 +47,6 @@ typedef struct {
   bool measure_step_time;       /**< 是否测量每步耗时 */
   CalcStepCallback on_step;     /**< 步骤回调函数（可为NULL） */
   void *user_data;              /**< 用户数据（传递给回调） */
-  unsigned debug_flags;         /**< 运行时调试标志位（可组合） */
 } CalcEvalOptions;
 
 /* ========================================================================

@@ -26,23 +26,40 @@ This is a practice project for learning C language, implementing mathematical ex
 - ✅ Operator precedence (multiplication/division > addition/subtraction)
 - ✅ Decimal number support
 - ✅ Command-line interactive interface
+- ✅ Debug system (--debug flag to view parsing process)
 
 ## 🛠️ Tech Stack
 
-- **Programming Language**: C (C11)
-- **Build Tools**: CMake / GCC
+- **Programming Language**: C (C99)
+- **Build Tools**: CMake / GCC / MinGW
 - **Algorithm**: Recursive Descent Parser
+- **Debug**: Runtime control via (--debug)
 
 ## 📁 File Structure
 
 ```
 CalcExpr/
-├── main.c           # Main program entry
-├── calculator.c     # Calculator core logic (to be implemented)
-├── calculator.h     # Calculator header file
-├── token.h          # Token type definitions
-├── CMakeLists.txt   # CMake build configuration
-└── README.md        # Project documentation
+├── src/                    # Source code
+│   ├── main.c            # Main program entry
+│   ├── calculator.c       # Calculator public interface
+│   ├── parser.c          # Recursive descent parser
+│   ├── lexer.c           # Lexer
+│   ├── command.c         # Command handler
+│   ├── logger.c          # Logging system
+│   ├── debug.c            # Debug system
+│   └── platform/          # Platform-specific code
+├── include/               # Header files
+│   ├── calculator.h      # Public interface
+│   ├── parser.h         # Parser interface
+│   ├── lexer.h          # Lexer interface
+│   ├── command.h        # Command interface
+│   ├── logger.h         # Logger interface
+│   ├── debug.h          # Debug macro interface
+│   └── parser_debug.h    # Parser debug macros
+├── test/                  # Unit tests
+├── CMakeLists.txt        # CMake build configuration
+├── build_debug.bat       # Windows debug build script
+└── README.md             # Project documentation
 ```
 
 ## 🚀 Quick Start
@@ -136,15 +153,81 @@ This recursive definition naturally supports operator precedence!
 ### 2. Lexical Analysis (Lexer)
 
 Breaking input string into Tokens:
-- Numbers: `123`, `45.67`
+- Numbers: `123`, `45.67`, `1e-3`
 - Operators: `+`, `-`, `*`, `/`
 - Parentheses: `(`, `)`
+- End marker: `END`
 
 ### 3. Modular Design
 
-- `token.h` - Token type definitions
-- `calculator.c` - Calculation logic
-- `main.c` - User interaction
+- `lexer.h/c` - Lexer
+- `parser.h/c` - Recursive descent parser
+- `calculator.h/c` - Calculator public interface
+- `command.h/c` - Command handler
+- `logger.h/c` - Unified logging system
+- `debug.h/c` - Debug macro system
+
+### 4. Debug System
+
+The project provides a unified debug system, controllable at runtime via command-line arguments, for learning how the recursive descent parser executes.
+
+#### Compile-time Enable
+
+Build with `-DENABLE_DEBUG=ON`:
+
+```bash
+# Windows
+cmake -G "MinGW Makefiles" -DENABLE_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -S . -B build
+cmake --build build
+
+# Or use the provided script
+build_debug.bat
+```
+
+#### Command-line Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `--debug` | Enable debug mode |
+| `--debug-level=N` | Set debug level (0-5) |
+| `--debug-module=NAME` | Set module (lexer/parser/calc/main/all) |
+
+#### Debug Levels
+
+| Level | Value | Description |
+|-------|-------|-------------|
+| `DEBUG_LEVEL_NONE` | 0 | Disable all debug output |
+| `DEBUG_LEVEL_ERROR` | 1 | Error messages only |
+| `DEBUG_LEVEL_WARN` | 2 | Warnings and above |
+| `DEBUG_LEVEL_INFO` | 3 | Info and above |
+| `DEBUG_LEVEL_DEBUG` | 4 | Debug and above (Lexer Token output) |
+| `DEBUG_LEVEL_TRACE` | 5 | Trace mode (Parser function call tree + intermediate results) |
+
+#### Debug Output Example
+
+Input `2+3*4` with `--debug --debug-level=5`:
+
+```
+[LEXER] NUM@0 | PLUS@1 | NUM@2 | MUL@3 | NUM@4 | END@5
+[PARSER] │   parseExpression()
+[PARSER] │   parseTerm()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] │   parseTerm()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] │   parseUnary()
+[PARSER] │   parsePrimary()
+[PARSER] 3 * 4 = 12
+[PARSER] 2 + 12 = 14
+Expression: 2+3*4
+Result:   14
+```
+
+Output explanation:
+- `[LEXER]` line shows all Tokens (type@position)
+- `[PARSER]` lines show parser function call tree and intermediate results
+- Indentation represents recursion depth
 
 ## 🤝 Contributing
 

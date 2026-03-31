@@ -60,7 +60,6 @@ void calcEvalOptionsInit(CalcEvalOptions *options) {
   options->measure_step_time = false;
   options->on_step = NULL;
   options->user_data = NULL;
-  options->debug_flags = 0U;  /* 默认关闭所有运行时调试 */
 }
 
 CalcError evaluate(const char *expression, const CalcEvalOptions *options,

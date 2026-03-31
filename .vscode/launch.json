@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Calculator",
+      "name": "Calculator (No Debug)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
@@ -13,6 +13,58 @@
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "preLaunchTask": "CMake Build"
+    },
+    {
+      "name": "Calculator (Debug TRACE)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/calculator",
+      "args": ["--debug", "--debug-level=5"],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake Clean and Build (Debug)"
+    },
+    {
+      "name": "Calculator (Debug DEBUG)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/calculator",
+      "args": ["--debug", "--debug-level=4"],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake Clean and Build (Debug)"
+    },
+    {
+      "name": "Calculator (Debug Parser)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/calculator",
+      "args": ["--debug", "--debug-module=parser", "--debug-level=5"],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake Clean and Build (Debug)"
+    },
+    {
+      "name": "Calculator (Debug Lexer)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/calculator",
+      "args": ["--debug", "--debug-module=lexer", "--debug-level=4"],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake Clean and Build (Debug)"
     }
   ]
 }

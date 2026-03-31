@@ -39,7 +39,7 @@
 #include <time.h>
 
 #include "lexer.h"
-#include "parser_debug.h"
+#include "debug.h"
 
 /* ========================================================================
  * 配置常量
@@ -63,8 +63,7 @@ typedef struct {
   void *step_user_data;     /**< 用户数据 */
   clock_t last_step_clock;  /**< 上一步的时间戳 */
 
-  /* 调试支持 */
-  unsigned debug_flags; /**< 调试标志位（运行时） */
+  /* 调试支持已统一到 debug.c/h */
 } Parser;
 
 /* ========================================================================
@@ -86,6 +85,30 @@ typedef struct {
     if ((parser)->err != CALC_OK)                                              \
       return 0.0;                                                              \
   } while (0)
+
+/* ========================================================================
+ * 调试宏（统一使用 debug.c/h 系统）
+ * ======================================================================== */
+
+/**
+ * @brief Parser 函数入口跟踪（带缩进的树结构）
+ */
+#define PARSER_DEBUG_ENTER(func)                                                \
+  DEBUG_IF(DEBUG_LEVEL_TRACE, DEBUG_MODULE_PARSER,                              \
+      fprintf(g_debug_output ? g_debug_output : stderr,                          \
+          "[PARSER] %*s%-4s %s()\n", parser->depth * 4, "", "│  ", func))
+
+/**
+ * @brief Parser 函数出口跟踪（仅标记，用于跟踪流）
+ */
+#define PARSER_DEBUG_EXIT(result)                                               \
+  DEBUG_TRACE_EXIT(DEBUG_MODULE_PARSER, (result))
+
+/**
+ * @brief Parser 错误调试
+ */
+#define PARSER_DEBUG_ERROR(fmt, ...)                                            \
+  DEBUG_ERROR("[PARSER] " fmt, ##__VA_ARGS__)
 
 /* ========================================================================
  * 函数原型声明（前向声明）
@@ -114,58 +137,37 @@ static double evalMul(double a, double b, Parser *parser) {
   const double result = a * b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g * %.10g = %.10g", a, b, result);
+  DEBUG_PARSER("%*s%.10g * %.10g = %.10g", parser->depth * 4, "", a, b, result);
   return result;
 }
 
-/**
- * @brief 除法运算（安全版本）
- *
- * @param a 左操作数（被除数）
- * @param b 右操作数（除数）
- * @param parser 解析器（用于错误设置和步骤回调）
- * @param err_pos 错误位置（除零时报告）
- * @return 运算结果（如果除零，返回 0.0，错误由 parser 设置）
- */
 static double evalDiv(double a, double b, Parser *parser, size_t err_pos) {
   if (fpclassify(b) == FP_ZERO) {
     parserSetError(parser, CALC_ERROR_DIV_BY_ZERO, err_pos);
-    PARSER_TRACE_ERROR(parser, "Division by zero at position %zu\n", err_pos);
+    PARSER_DEBUG_ERROR("Division by zero at position %zu", err_pos);
     return 0.0;
   }
 
   const double result = a / b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g / %.10g = %.10g", a, b, result);
+  DEBUG_PARSER("%*s%.10g / %.10g = %.10g", parser->depth * 4, "", a, b, result);
   return result;
 }
 
-/**
- * @brief 加法运算
- *
- * @param a 左操作数
- * @param b 右操作数
- * @param parser 解析器（用于步骤回调）
- * @return 运算结果
- */
 static double evalAdd(double a, double b, Parser *parser) {
   const double result = a + b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g + %.10g = %.10g", a, b, result);
+  DEBUG_PARSER("%*s%.10g + %.10g = %.10g", parser->depth * 4, "", a, b, result);
   return result;
 }
 
-/**
- * @brief 减法运算
- *
- * @param a 左操作数
- * @param b 右操作数
- * @param parser 解析器（用于步骤回调）
- * @return 运算结果
- */
 static double evalSub(double a, double b, Parser *parser) {
   const double result = a - b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g - %.10g = %.10g", a, b, result);
+  DEBUG_PARSER("%*s%.10g - %.10g = %.10g", parser->depth * 4, "", a, b, result);
   return result;
 }
 
@@ -186,10 +188,6 @@ static void parserNextToken(Parser *parser) {
   if (parser->lexer.err != CALC_OK) {
     parserSetError(parser, parser->lexer.err, parser->lexer.err_pos);
   }
-
-  PARSER_TRACE_TOKEN(parser, "%s at pos %zu\n",
-                     debugTokenName(parser->lexer.current.type),
-                     parser->lexer.current.start_pos);
 }
 
 /* ========================================================================
@@ -243,7 +241,7 @@ static void parserEmitStep(Parser *parser, const char *fmt, ...) {
  * @return 计算结果
  */
 static double parserParsePrimary(Parser *parser) {
-  PARSER_TRACE_ENTER(parser, "parsePrimary");
+  PARSER_DEBUG_ENTER("parsePrimary");
 
   /* 情况 1：数字 */
   if (parser->lexer.current.type == TOKEN_NUMBER) {
@@ -253,7 +251,7 @@ static double parserParsePrimary(Parser *parser) {
     parserEmitStep(parser, "读取数字 %.10g", value);
 
     parserNextToken(parser);
-    PARSER_TRACE_EXIT(parser, "parsePrimary", value);
+    PARSER_DEBUG_EXIT(value);
     return value;
   }
 
@@ -267,7 +265,7 @@ static double parserParsePrimary(Parser *parser) {
     /* 递归深度检查 */
     if (parser->depth >= parser->max_depth) {
       parserSetError(parser, CALC_ERROR_RECURSION_LIMIT, lparen_pos);
-      PARSER_TRACE_EXIT(parser, "parsePrimary", 0.0);
+      PARSER_DEBUG_EXIT(0.0);
       return 0.0;
     }
 
@@ -279,19 +277,19 @@ static double parserParsePrimary(Parser *parser) {
     if (parser->lexer.current.type != TOKEN_RPAREN) {
       parserSetError(parser, CALC_ERROR_MISSING_RPAREN,
                      parser->lexer.current.start_pos);
-      PARSER_TRACE_EXIT(parser, "parsePrimary", 0.0);
+      PARSER_DEBUG_EXIT(0.0);
       return 0.0;
     }
 
     parserNextToken(parser); /* 消费 ')' */
-    PARSER_TRACE_EXIT(parser, "parsePrimary", value);
+    PARSER_DEBUG_EXIT(value);
     return value;
   }
 
   /* 情况 3：语法错误 */
   parserSetError(parser, CALC_ERROR_UNEXPECTED_TOKEN,
                  parser->lexer.current.start_pos);
-  PARSER_TRACE_EXIT(parser, "parsePrimary", 0.0);
+  PARSER_DEBUG_EXIT(0.0);
   return 0.0;
 }
 
@@ -310,7 +308,7 @@ static double parserParsePrimary(Parser *parser) {
  * @return 计算结果
  */
 static double parserParseUnary(Parser *parser) {
-  PARSER_TRACE_ENTER(parser, "parseUnary");
+  PARSER_DEBUG_ENTER("parseUnary");
 
   /* 检查是否有一元运算符（递归情况） */
   if (parser->lexer.current.type == TOKEN_PLUS ||
@@ -320,7 +318,7 @@ static double parserParseUnary(Parser *parser) {
     if (parser->depth >= parser->max_depth) {
       parserSetError(parser, CALC_ERROR_RECURSION_LIMIT,
                      parser->lexer.current.start_pos);
-      PARSER_TRACE_EXIT(parser, "parseUnary", 0.0);
+      PARSER_DEBUG_EXIT(0.0);
       return 0.0;
     }
 
@@ -339,13 +337,13 @@ static double parserParseUnary(Parser *parser) {
     parserEmitStep(parser, "%c%.10g = %.10g", op == TOKEN_MINUS ? '-' : '+',
                    operand, result);
 
-    PARSER_TRACE_EXIT(parser, "parseUnary", result);
+    PARSER_DEBUG_EXIT(result);
     return result;
   }
 
   /* 递归终止：调用下一层 */
   double result = parserParsePrimary(parser);
-  PARSER_TRACE_EXIT(parser, "parseUnary", result);
+  PARSER_DEBUG_EXIT(result);
   return result;
 }
 
@@ -362,7 +360,7 @@ static double parserParseUnary(Parser *parser) {
  * @return 计算结果
  */
 static double parserParseTerm(Parser *parser) {
-  PARSER_TRACE_ENTER(parser, "parseTerm");
+  PARSER_DEBUG_ENTER("parseTerm");
 
   double left = parserParseUnary(parser); /* 解析第一个操作数 */
   PARSER_CHECK();
@@ -389,7 +387,7 @@ static double parserParseTerm(Parser *parser) {
     }
   }
 
-  PARSER_TRACE_EXIT(parser, "parseTerm", left);
+  PARSER_DEBUG_EXIT(left);
   return left;
 }
 
@@ -406,7 +404,7 @@ static double parserParseTerm(Parser *parser) {
  * @return 计算结果
  */
 static double parserParseExpression(Parser *parser) {
-  PARSER_TRACE_ENTER(parser, "parseExpression");
+  PARSER_DEBUG_ENTER("parseExpression");
 
   double left = parserParseTerm(parser); /* 解析第一个操作数 */
   PARSER_CHECK();
@@ -431,7 +429,7 @@ static double parserParseExpression(Parser *parser) {
     }
   }
 
-  PARSER_TRACE_EXIT(parser, "parseExpression", left);
+  PARSER_DEBUG_EXIT(left);
   return left;
 }
 
@@ -447,6 +445,9 @@ CalcError parserEvaluateExpression(const char *expression,
   /* 初始化词法分析器 */
   lexerInit(&parser.lexer, expression);
 
+  /* 预扫描所有 token 用于调试输出 */
+  lexerDebugPrintAll(&parser.lexer);
+
   /* 初始化解析器状态 */
   parser.err = CALC_OK;
   parser.err_pos = 0;
@@ -457,7 +458,6 @@ CalcError parserEvaluateExpression(const char *expression,
   parser.on_step = NULL;
   parser.step_user_data = NULL;
   parser.last_step_clock = (clock_t)-1;
-  parser.debug_flags = PARSER_DEBUG_LEVEL; /* 编译期默认值 */
 
   /* 应用用户提供的选项（如果有） */
   if (options != NULL) {
@@ -467,10 +467,6 @@ CalcError parserEvaluateExpression(const char *expression,
     parser.measure_step_time = options->measure_step_time;
     parser.on_step = options->on_step;
     parser.step_user_data = options->user_data;
-    /* 运行时调试标志：优先使用 options 中的值，否则使用编译期默认值 */
-    parser.debug_flags = options->debug_flags != 0U
-                            ? options->debug_flags
-                            : PARSER_DEBUG_LEVEL;
   }
 
   if (parser.measure_step_time) {
