@@ -15,60 +15,56 @@
       "preLaunchTask": "CMake Build"
     },
     {
-      "name": "Calculator (Debug Mode) - TRACE",
+      "name": "Calculator (Debug TRACE)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
       "args": ["--debug", "--debug-level=5"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "externalConsole": true,
+      "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Build (Debug Mode)",
-      "detail": "使用 --debug --debug-level=5 开启完整跟踪输出"
+      "preLaunchTask": "CMake Clean and Build (Debug)"
     },
     {
-      "name": "Calculator (Debug Mode) - DEBUG",
+      "name": "Calculator (Debug DEBUG)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
       "args": ["--debug", "--debug-level=4"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "externalConsole": true,
+      "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Build (Debug Mode)",
-      "detail": "使用 --debug --debug-level=4 开启调试输出"
+      "preLaunchTask": "CMake Clean and Build (Debug)"
     },
     {
-      "name": "Calculator (Debug Mode) - Parser Module",
+      "name": "Calculator (Debug Parser)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
       "args": ["--debug", "--debug-module=parser", "--debug-level=5"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "externalConsole": true,
+      "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Build (Debug Mode)",
-      "detail": "仅开启 Parser 模块的跟踪"
+      "preLaunchTask": "CMake Clean and Build (Debug)"
     },
     {
-      "name": "Calculator (Debug Mode) - Lexer Module",
+      "name": "Calculator (Debug Lexer)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
       "args": ["--debug", "--debug-module=lexer", "--debug-level=4"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "externalConsole": true,
+      "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Build (Debug Mode)",
-      "detail": "仅开启 Lexer 模块的调试"
+      "preLaunchTask": "CMake Clean and Build (Debug)"
     }
   ]
 }

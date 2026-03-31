@@ -14,40 +14,25 @@
     {
       "label": "CMake Build (Debug Mode)",
       "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-Command",
-        "cmake -G \"MinGW Makefiles\" -DENABLE_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -S . -B build; cmake --build build"
-      ],
+      "command": "${workspaceFolder}/vscode_build_debug.bat",
       "group": "build",
-      "problemMatcher": ["$cmake"],
+      "problemMatcher": ["$gcc"],
       "detail": "使用 ENABLE_DEBUG=ON 构建，运行时支持 --debug 参数"
     },
     {
       "label": "CMake Clean and Build (Debug)",
       "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-Command",
-        "Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue; cmake -G \"MinGW Makefiles\" -DENABLE_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -S . -B build; cmake --build build"
-      ],
+      "command": "${workspaceFolder}/vscode_build_debug.bat",
       "group": "build",
-      "problemMatcher": ["$cmake"],
+      "problemMatcher": ["$gcc"],
       "detail": "清理后重新构建，开启调试系统"
     },
     {
       "label": "CMake Configure (Debug Only)",
       "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-Command",
-        "cmake -G \"MinGW Makefiles\" -DENABLE_DEBUG=ON -DCMAKE_BUILD_TYPE=Debug -S . -B build"
-      ],
+      "command": "${workspaceFolder}/vscode_build_debug.bat",
       "group": "build",
-      "problemMatcher": ["$cmake"],
+      "problemMatcher": ["$gcc"],
       "detail": "仅配置项目，不构建（用于检查调试编译选项）"
     }
   ]
