@@ -40,6 +40,7 @@
 
 #include "lexer.h"
 #include "parser_debug.h"
+#include "debug.h"
 
 /* ========================================================================
  * 配置常量
@@ -63,8 +64,7 @@ typedef struct {
   void *step_user_data;     /**< 用户数据 */
   clock_t last_step_clock;  /**< 上一步的时间戳 */
 
-  /* 调试支持 */
-  unsigned debug_flags; /**< 调试标志位（运行时） */
+  /* 调试支持已统一到 debug.c/h */
 } Parser;
 
 /* ========================================================================
@@ -114,18 +114,13 @@ static double evalMul(double a, double b, Parser *parser) {
   const double result = a * b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g * %.10g = %.10g", a, b, result);
+  if (g_debug_level >= DEBUG_LEVEL_TRACE) {
+    printf("[PARSER] %*s%.10g * %.10g = %.10g\n",
+        parser->depth * 4, "", a, b, result);
+  }
   return result;
 }
 
-/**
- * @brief 除法运算（安全版本）
- *
- * @param a 左操作数（被除数）
- * @param b 右操作数（除数）
- * @param parser 解析器（用于错误设置和步骤回调）
- * @param err_pos 错误位置（除零时报告）
- * @return 运算结果（如果除零，返回 0.0，错误由 parser 设置）
- */
 static double evalDiv(double a, double b, Parser *parser, size_t err_pos) {
   if (fpclassify(b) == FP_ZERO) {
     parserSetError(parser, CALC_ERROR_DIV_BY_ZERO, err_pos);
@@ -136,36 +131,32 @@ static double evalDiv(double a, double b, Parser *parser, size_t err_pos) {
   const double result = a / b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g / %.10g = %.10g", a, b, result);
+  if (g_debug_level >= DEBUG_LEVEL_TRACE) {
+    printf("[PARSER] %*s%.10g / %.10g = %.10g\n",
+        parser->depth * 4, "", a, b, result);
+  }
   return result;
 }
 
-/**
- * @brief 加法运算
- *
- * @param a 左操作数
- * @param b 右操作数
- * @param parser 解析器（用于步骤回调）
- * @return 运算结果
- */
 static double evalAdd(double a, double b, Parser *parser) {
   const double result = a + b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g + %.10g = %.10g", a, b, result);
+  if (g_debug_level >= DEBUG_LEVEL_TRACE) {
+    printf("[PARSER] %*s%.10g + %.10g = %.10g\n",
+        parser->depth * 4, "", a, b, result);
+  }
   return result;
 }
 
-/**
- * @brief 减法运算
- *
- * @param a 左操作数
- * @param b 右操作数
- * @param parser 解析器（用于步骤回调）
- * @return 运算结果
- */
 static double evalSub(double a, double b, Parser *parser) {
   const double result = a - b;
   parser->step_index++;
   parserEmitStep(parser, "%.10g - %.10g = %.10g", a, b, result);
+  if (g_debug_level >= DEBUG_LEVEL_TRACE) {
+    printf("[PARSER] %*s%.10g - %.10g = %.10g\n",
+        parser->depth * 4, "", a, b, result);
+  }
   return result;
 }
 
@@ -186,10 +177,6 @@ static void parserNextToken(Parser *parser) {
   if (parser->lexer.err != CALC_OK) {
     parserSetError(parser, parser->lexer.err, parser->lexer.err_pos);
   }
-
-  PARSER_TRACE_TOKEN(parser, "%s at pos %zu\n",
-                     debugTokenName(parser->lexer.current.type),
-                     parser->lexer.current.start_pos);
 }
 
 /* ========================================================================
@@ -447,6 +434,9 @@ CalcError parserEvaluateExpression(const char *expression,
   /* 初始化词法分析器 */
   lexerInit(&parser.lexer, expression);
 
+  /* 预扫描所有 token 用于调试输出 */
+  lexerDebugPrintAll(&parser.lexer);
+
   /* 初始化解析器状态 */
   parser.err = CALC_OK;
   parser.err_pos = 0;
@@ -457,7 +447,6 @@ CalcError parserEvaluateExpression(const char *expression,
   parser.on_step = NULL;
   parser.step_user_data = NULL;
   parser.last_step_clock = (clock_t)-1;
-  parser.debug_flags = PARSER_DEBUG_LEVEL; /* 编译期默认值 */
 
   /* 应用用户提供的选项（如果有） */
   if (options != NULL) {
@@ -467,10 +456,6 @@ CalcError parserEvaluateExpression(const char *expression,
     parser.measure_step_time = options->measure_step_time;
     parser.on_step = options->on_step;
     parser.step_user_data = options->user_data;
-    /* 运行时调试标志：优先使用 options 中的值，否则使用编译期默认值 */
-    parser.debug_flags = options->debug_flags != 0U
-                            ? options->debug_flags
-                            : PARSER_DEBUG_LEVEL;
   }
 
   if (parser.measure_step_time) {

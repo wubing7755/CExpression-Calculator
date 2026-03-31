@@ -150,4 +150,11 @@ void lexerInit(Lexer* lexer, const char* input);
  */
 void lexerNextToken(Lexer* lexer);
 
+/**
+ * @brief 预扫描并打印所有 Token
+ * 
+ * 在解析开始前调用，一次性输出所有 token。
+ */
+void lexerDebugPrintAll(Lexer *lexer);
+
 #endif  /* LEXER_H */

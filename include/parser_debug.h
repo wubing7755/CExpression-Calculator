@@ -53,134 +53,65 @@
    *         [EXIT]  parseUnary => 12
    */
 
-  #ifndef PARSER_DEBUG_H
-  #define PARSER_DEBUG_H
+#ifndef PARSER_DEBUG_H
+#define PARSER_DEBUG_H
 
-  #include <stdio.h>
+#include <stdio.h>
+#include <stddef.h>
 
-  /* ============================================================
-   * 调试级别定义
-   * ============================================================ */
+/* ============================================================
+ * Token 名称字符串（用于调试输出）
+ * ============================================================ */
 
-  #define PARSER_DEBUG_NONE  0
-  #define PARSER_DEBUG_ERROR (1<<0)
-  #define PARSER_DEBUG_TOKEN (1<<1)
-  #define PARSER_DEBUG_CALL  (1<<2)
-  #define PARSER_DEBUG_STEP  (1<<3)
+static inline const char* debugTokenName(int type) {
+    switch (type) {
+        case 0:  return "TOKEN_NUMBER";
+        case 1:  return "TOKEN_PLUS";
+        case 2:  return "TOKEN_MINUS";
+        case 3:  return "TOKEN_MUL";
+        case 4:  return "TOKEN_DIV";
+        case 5:  return "TOKEN_LPAREN";
+        case 6:  return "TOKEN_RPAREN";
+        case 7:  return "TOKEN_END";
+        case 8:  return "TOKEN_ERROR";
+        default: return "UNKNOWN";
+    }
+}
 
-  /* 默认关闭所有调试 */
-  #ifndef PARSER_DEBUG_LEVEL
-  #define PARSER_DEBUG_LEVEL PARSER_DEBUG_NONE
-  #endif
+/* ============================================================
+ * 宏：统一使用 g_debug_level 进行运行时控制
+ *
+ * 级别对应：
+ *   DEBUG_LEVEL_TRACE (5): Parser 函数调用树 + 中间计算结果
+ *   DEBUG_LEVEL_ERROR (1): Error only
+ * ============================================================ */
 
-  /* ============================================================
-   * Token 名称字符串（用于调试输出）
-   * ============================================================ */
+#if DEBUG_ENABLE
+    #define PARSER_TRACE_ENTER(parser, func) \
+        do { \
+            if (g_debug_level >= DEBUG_LEVEL_TRACE) { \
+                printf("[PARSER] %*s%-4s %s()\n", \
+                    (parser)->depth * 4, "", "│  ", func); \
+            } \
+        } while(0)
 
-  static inline const char* debugTokenName(int type) {
-      switch (type) {
-          case 0:  return "TOKEN_NUMBER";
-          case 1:  return "TOKEN_PLUS";
-          case 2:  return "TOKEN_MINUS";
-          case 3:  return "TOKEN_MUL";
-          case 4:  return "TOKEN_DIV";
-          case 5:  return "TOKEN_LPAREN";
-          case 6:  return "TOKEN_RPAREN";
-          case 7:  return "TOKEN_END";
-          case 8:  return "TOKEN_ERROR";
-          default: return "UNKNOWN";
-      }
-  }
+    #define PARSER_TRACE_EXIT(parser, func, result) \
+        do { \
+            if (g_debug_level >= DEBUG_LEVEL_TRACE) { \
+                (void)(result); \
+            } \
+        } while(0)
 
-  /* ============================================================
-   * 宏：条件编译调试输出
-   * ============================================================ */
+    #define PARSER_TRACE_ERROR(parser, fmt, ...) \
+        do { \
+            if (g_debug_level >= DEBUG_LEVEL_ERROR) { \
+                printf("[PARSER] ERROR: " fmt "\n", ##__VA_ARGS__); \
+            } \
+        } while(0)
+#else
+    #define PARSER_TRACE_ENTER(parser, func) ((void)0)
+    #define PARSER_TRACE_EXIT(parser, func, result) ((void)0)
+    #define PARSER_TRACE_ERROR(parser, fmt, ...) ((void)0)
+#endif
 
-  #if (PARSER_DEBUG_LEVEL & PARSER_DEBUG_CALL)
-      /*
-       * 优化：使用 __builtin_expect 提示编译器"调试通常是关闭的"
-       * 这样编译器可以将"调试关闭"路径优化为几乎零开销
-       *
-       * 对于 GCC/Clang：使用 __builtin_expect
-       * 对于其他编译器：回退到普通 if 检查
-       */
-      #if defined(__GNUC__) || defined(__clang__)
-          #define PARSER_TRACE_ENTER(parser, func) \
-              do { \
-                  unsigned _pdbg_flags_ = (parser)->debug_flags; \
-                  if (__builtin_expect(_pdbg_flags_ & PARSER_DEBUG_CALL, 0)) { \
-                      printf("[ENTER] %*s%s\n", (parser)->depth * 2, "", func); \
-                  } \
-              } while(0)
-
-          #define PARSER_TRACE_EXIT(parser, func, result) \
-              do { \
-                  unsigned _pdbg_flags_ = (parser)->debug_flags; \
-                  if (__builtin_expect(_pdbg_flags_ & PARSER_DEBUG_CALL, 0)) { \
-                      printf("[EXIT]  %*s%s => %.10g\n", (parser)->depth * 2, "", func, (double)(result)); \
-                  } \
-              } while(0)
-      #else
-          /* 非 GCC/Clang 编译器：使用普通实现 */
-          #define PARSER_TRACE_ENTER(parser, func) \
-              do { \
-                  if ((parser)->debug_flags & PARSER_DEBUG_CALL) { \
-                      printf("[ENTER] %*s%s\n", (parser)->depth * 2, "", func); \
-                  } \
-              } while(0)
-
-          #define PARSER_TRACE_EXIT(parser, func, result) \
-              do { \
-                  if ((parser)->debug_flags & PARSER_DEBUG_CALL) { \
-                      printf("[EXIT]  %*s%s => %.10g\n", (parser)->depth * 2, "", func, (double)(result)); \
-                  } \
-              } while(0)
-      #endif
-  #else
-      #define PARSER_TRACE_ENTER(parser, func) ((void)0)
-      #define PARSER_TRACE_EXIT(parser, func, result) ((void)0)
-  #endif
-
-  #if (PARSER_DEBUG_LEVEL & PARSER_DEBUG_TOKEN)
-      #if defined(__GNUC__) || defined(__clang__)
-          #define PARSER_TRACE_TOKEN(parser, fmt, ...) \
-              do { \
-                  unsigned _pdbg_flags_ = (parser)->debug_flags; \
-                  if (__builtin_expect(_pdbg_flags_ & PARSER_DEBUG_TOKEN, 0)) { \
-                      printf("[TOKEN] " fmt, ##__VA_ARGS__); \
-                  } \
-              } while(0)
-      #else
-          #define PARSER_TRACE_TOKEN(parser, fmt, ...) \
-              do { \
-                  if ((parser)->debug_flags & PARSER_DEBUG_TOKEN) { \
-                      printf("[TOKEN] " fmt, ##__VA_ARGS__); \
-                  } \
-              } while(0)
-      #endif
-  #else
-      #define PARSER_TRACE_TOKEN(parser, fmt, ...) ((void)0)
-  #endif
-
-  #if (PARSER_DEBUG_LEVEL & PARSER_DEBUG_ERROR)
-      #if defined(__GNUC__) || defined(__clang__)
-          #define PARSER_TRACE_ERROR(parser, fmt, ...) \
-              do { \
-                  unsigned _pdbg_flags_ = (parser)->debug_flags; \
-                  if (__builtin_expect(_pdbg_flags_ & PARSER_DEBUG_ERROR, 0)) { \
-                      printf("[ERROR] " fmt, ##__VA_ARGS__); \
-                  } \
-              } while(0)
-      #else
-          #define PARSER_TRACE_ERROR(parser, fmt, ...) \
-              do { \
-                  if ((parser)->debug_flags & PARSER_DEBUG_ERROR) { \
-                      printf("[ERROR] " fmt, ##__VA_ARGS__); \
-                  } \
-              } while(0)
-      #endif
-  #else
-      #define PARSER_TRACE_ERROR(parser, fmt, ...) ((void)0)
-  #endif
-
-  #endif /* PARSER_DEBUG_H */
+#endif /* PARSER_DEBUG_H */
