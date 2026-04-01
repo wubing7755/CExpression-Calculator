@@ -52,17 +52,19 @@
 
 /**
  * @brief 命令状态结构
- * 
+ *
  * 存储命令处理模块的运行时状态。
- * 
+ *
  * ## 字段说明
- * 
+ *
  *   - show_process : 是否显示计算过程
- *   - should_exit   : 是否请求退出程序
+ *   - should_exit  : 是否请求退出程序
+ *   - last_input   : 上一次命令输入（供处理器解析参数）
  */
 typedef struct {
-    bool show_process;   /**< 是否显示计算过程 */
-    bool should_exit;    /**< 是否请求退出 */
+    bool show_process;           /**< 是否显示调试输出 */
+    bool should_exit;           /**< 是否请求退出 */
+    const char* last_input;     /**< 上一次命令输入（供处理器解析参数） */
 } CommandState;
 
 /**

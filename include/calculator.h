@@ -27,50 +27,18 @@ typedef enum {
 } CalcError;
 
 /* ========================================================================
- * 步骤回调接口
- * ======================================================================== */
-
-/**
- * @brief 计算步骤信息
- *
- * 包含单个计算步骤的详细信息，用于调试和过程展示。
- *
- * ## 字段说明
- *
- *   - step_index : 步骤序号，从 1 开始递增
- *   - message    : 步骤描述信息（如 "2 * 3 = 6"）
- *   - elapsed_ms : 步骤耗时（毫秒），0 表示不测量
- */
-typedef struct {
-  unsigned step_index;          /**< 步骤序号 */
-  char message[256];            /**< 步骤描述（内嵌缓冲区） */
-  double elapsed_ms;            /**< 步骤耗时（毫秒） */
-} CalcStepInfo;
-
-/**
- * @brief 步骤回调函数类型
- *
- * 每执行一个计算步骤时调用，用于实现计算过程输出。
- *
- * @param user_data 用户数据（来自 CalcEvalOptions.user_data）
- * @param step      步骤信息（仅在调用期间有效）
- */
-typedef void (*CalcStepCallback)(void *user_data, const CalcStepInfo *step);
-
-/* ========================================================================
  * 评估选项结构
  * ======================================================================== */
 
 /**
  * @brief 表达式评估选项
  *
- * 用于控制求值过程中的行为和回调。
+ * 用于控制求值过程中的行为。启用调试时，计算步骤会通过
+ * debug 系统输出（DEBUG_LEVEL_DEBUG 及以上级别）。
  */
 typedef struct {
   unsigned max_recursion_depth; /**< 最大递归深度（0=使用默认值 256） */
-  bool measure_step_time;      /**< 是否测量每步耗时 */
-  CalcStepCallback on_step;    /**< 步骤回调函数（可为 NULL） */
-  void *user_data;             /**< 用户数据（传递给回调） */
+  bool measure_step_time;      /**< 是否测量每步耗时（预留） */
 } CalcEvalOptions;
 
 /* ========================================================================

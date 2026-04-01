@@ -76,18 +76,11 @@ static SuiteMask g_suite_mask = SUITE_ALL;
 static int g_tests_passed = 0;
 static int g_tests_failed = 0;
 static int g_tests_selected = 0;
-static int g_trace_calls = 0;
 
 static int almost_equal(double lhs, double rhs) {
     const double diff = fabs(lhs - rhs);
     const double scale = fmax(1.0, fmax(fabs(lhs), fabs(rhs)));
     return diff <= EPSILON * scale;
-}
-
-static void trace_counter_cb(void* user_data, const CalcStepInfo* step) {
-    (void)user_data;
-    (void)step;
-    g_trace_calls++;
 }
 
 static void fail_case(const char* name, const char* expression, const char* reason) {
@@ -346,25 +339,7 @@ static void run_api_contract_suite(void) {
         free(expr);
     }
 
-    if (case_matches_filter("evaluate-step-hook", "2+3*4")) {
-        CalcEvalOptions options;
-        double value = 0.0;
-        g_tests_selected++;
-        g_trace_calls = 0;
-        calcEvalOptionsInit(&options);
-        options.on_step = trace_counter_cb;
-        options.measure_step_time = true;
-        err = evaluate("2+3*4", &options, &value, &err_pos);
-        if (err == CALC_OK && almost_equal(value, 14.0) && g_trace_calls > 0) {
-            pass_case("evaluate-step-hook", "returns CALC_OK and emits step events");
-        } else {
-            char detail[160];
-            snprintf(detail, sizeof(detail),
-                     "unexpected result: err=%d value=%.10g trace_calls=%d",
-                     err, value, g_trace_calls);
-            fail_case("evaluate-step-hook", "2+3*4", detail);
-        }
-    }
+    /* Note: step callback tests removed - use DEBUG_ENABLE system instead */
 
     if (case_matches_filter("command-dispatch", "show process")) {
         CommandState state;

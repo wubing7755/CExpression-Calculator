@@ -33,6 +33,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "debug.h"
 #include "logger.h"
 
 /* ========================================================================
@@ -175,29 +176,56 @@ static size_t tokenize(char* text, char* tokens[], size_t max_tokens)
 
 /**
  * @brief 处理 "show process" 命令
- * 
- * 开启计算过程的显示。
- * 开启后，每次计算表达式都会输出详细的计算步骤。
- * 
+ *
+ * 开启调试输出。支持的格式：
+ *   /show process     - 设置 DEBUG 级别（显示计算步骤）
+ *   /show process 4  - 同上，设置 DEBUG 级别
+ *   /show process 5  - 设置 TRACE 级别（显示完整调用链）
+ *
  * @param state 命令状态指针
  */
 static void handleShowProcess(CommandState* state)
 {
+    int level = DEBUG_LEVEL_DEBUG;  /* 默认 DEBUG 级别 */
+
+    /* 解析最后一个参数作为级别 */
+    if (state->last_input != NULL) {
+        const char* input = state->last_input;
+        /* 跳过开头的 '/' 和空格，查找最后一个数字 */
+        const char* p = input + strlen(input) - 1;
+        while (p > input && (*p < '0' || *p > '9')) {
+            p--;
+        }
+        if (p >= input && *p >= '0' && *p <= '9') {
+            level = *p - '0';
+            if (level < DEBUG_LEVEL_DEBUG || level > DEBUG_LEVEL_TRACE) {
+                level = DEBUG_LEVEL_DEBUG;  /* 无效级别，使用默认值 */
+            }
+        }
+    }
+
     state->show_process = true;
-    logger_log(LOG_INFO, "已开启计算过程输出。\n\n");
+    debug_set_level(level);
+
+    if (level == DEBUG_LEVEL_TRACE) {
+        logger_log(LOG_INFO, "已开启调试输出（TRACE 级别）。\n\n");
+    } else {
+        logger_log(LOG_INFO, "已开启调试输出（DEBUG 级别）。\n\n");
+    }
 }
 
 /**
  * @brief 处理 "hide process" 命令
- * 
- * 关闭计算过程的显示。
- * 
+ *
+ * 关闭调试输出，恢复安静模式。
+ *
  * @param state 命令状态指针
  */
 static void handleHideProcess(CommandState* state)
 {
     state->show_process = false;
-    logger_log(LOG_INFO, "已关闭计算过程输出。\n\n");
+    debug_set_level(DEBUG_LEVEL_NONE);
+    logger_log(LOG_INFO, "已关闭调试输出。\n\n");
 }
 
 /**
@@ -303,8 +331,9 @@ static void handleShowHelp(CommandState* state)
  */
 void commandStateInit(CommandState* state)
 {
-    state->show_process = false;  /* 默认不显示计算过程 */
-    state->should_exit = false;    /* 默认不退出 */
+    state->show_process = false;  /* 默认不显示调试输出 */
+    state->should_exit = false;     /* 默认不退出 */
+    state->last_input = NULL;       /* 无上一次输入 */
 }
 
 /**
@@ -398,6 +427,8 @@ CommandResult commandDispatch(const char* input, CommandState* state)
 
         /* 所有词都匹配 */
         if (match) {
+            /* 保存原始输入供处理器解析参数 */
+            state->last_input = input;
             /* 调用命令处理函数 */
             spec->handler(state);
             return COMMAND_RESULT_HANDLED;

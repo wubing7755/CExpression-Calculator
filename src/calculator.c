@@ -58,8 +58,6 @@ void calcEvalOptionsInit(CalcEvalOptions *options) {
 
   options->max_recursion_depth = 0U;
   options->measure_step_time = false;
-  options->on_step = NULL;
-  options->user_data = NULL;
 }
 
 /**

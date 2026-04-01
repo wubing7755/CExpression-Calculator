@@ -71,17 +71,6 @@ static bool isValidExpression(const char* input)
     return false;
 }
 
-static void printProcessStep(void* user_data, const CalcStepInfo* step)
-{
-    (void)user_data;
-    if (step->elapsed_ms > 0.0) {
-        logger_log(LOG_INFO, "  步骤%u: %s (耗时 %.3f ms)\n",
-                   step->step_index, step->message, step->elapsed_ms);
-    } else {
-        logger_log(LOG_INFO, "  步骤%u: %s\n", step->step_index, step->message);
-    }
-}
-
 static void printResult(const char* expression, double result)
 {
     logger_log(LOG_INFO, "表达式: %s\n", expression);
@@ -174,19 +163,9 @@ int main(int argc, char *argv[])
 
         /* -------- 表达式求值 -------- */
 
-        if (command_state.show_process) {
-            CalcEvalOptions options;
-            result = 0.0;
-            err_pos = 0;
-            logger_log(LOG_INFO, "计算过程:\n");
-            calcEvalOptionsInit(&options);
-            options.on_step = printProcessStep;
-            err = evaluate(input, &options, &result, &err_pos);
-        } else {
-            result = 0.0;
-            err_pos = 0;
-            err = evaluate(input, NULL, &result, &err_pos);
-        }
+        result = 0.0;
+        err_pos = 0;
+        err = evaluate(input, NULL, &result, &err_pos);
 
         /* -------- 结果输出 -------- */
 
