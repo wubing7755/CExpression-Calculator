@@ -15,56 +15,17 @@
       "preLaunchTask": "CMake Build"
     },
     {
-      "name": "Calculator (Full Trace)",
+      "name": "Calculator (Debug)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/bin/calculator",
-      "args": ["--debug", "--debug-level=5"],
+      "args": ["--debug"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Clean and Build (Debug)"
-    },
-    {
-      "name": "Calculator (Show Steps)",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/bin/calculator",
-      "args": ["--debug", "--debug-level=4"],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Clean and Build (Debug)"
-    },
-    {
-      "name": "Calculator (Parser Detail)",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/bin/calculator",
-      "args": ["--debug", "--debug-module=parser", "--debug-level=5"],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Clean and Build (Debug)"
-    },
-    {
-      "name": "Calculator (Lexer Detail)",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/bin/calculator",
-      "args": ["--debug", "--debug-module=lexer", "--debug-level=4"],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false,
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "preLaunchTask": "CMake Clean and Build (Debug)"
+      "preLaunchTask": "CMake Build (Debug Mode)"
     }
   ]
 }
