@@ -113,6 +113,7 @@ void commandHandleInteractive(const char* input, CommandState* state) {
 
         if (level >= DEBUG_LEVEL_ERROR && level <= DEBUG_LEVEL_TRACE) {
             debug_set_level(level);
+            debug_set_modules(DEBUG_MODULE_ALL);
             state->interactive.mode = INPUT_MODE_NORMAL;
             state->interactive.prompt = NULL;
             state->show_process = true;
