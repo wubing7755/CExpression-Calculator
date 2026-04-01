@@ -36,7 +36,6 @@
  *   
  *   CalcError err = parserEvaluateExpression(
  *       "2 + 3 * 4",      // 表达式
- *       NULL,             // 使用默认选项
  *       &result,          // 结果输出
  *       &err_pos          // 错误位置（可选）
  *   );
@@ -61,7 +60,6 @@
  * ## 参数说明
  * 
  * @param expression 要计算的数学表达式字符串
- * @param options 评估选项（可为 NULL，使用默认选项）
  * @param result 计算结果输出
  * @param err_pos 错误位置输出（可为 NULL）
  * 

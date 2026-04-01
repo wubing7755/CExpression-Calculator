@@ -29,7 +29,7 @@ static const char *g_error_messages[] = {
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(g_error_messages) / sizeof(g_error_messages[0]) ==
-                   CALC_ERROR_LAST,
+                   CALC_ERROR_LAST + 1,
                "Error message array size does not match CalcError enum");
 #endif
 
