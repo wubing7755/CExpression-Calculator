@@ -13,8 +13,9 @@
  * 
  * @code
  *   Expression ::= Term { ('+' | '-') Term }
- *   Term       ::= Factor { ('*' | '/') Factor }
- *   Factor     ::= Number | '(' Expression ')' | ['-'] Factor
+ *   Term       ::= Unary { ('*' | '/') Unary }
+ *   Unary      ::= Primary | ('+' | '-') Unary
+ *   Primary    ::= Number | '(' Expression ')'
  * @endcode
  * 
  * ## 运算符优先级

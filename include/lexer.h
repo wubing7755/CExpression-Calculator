@@ -152,9 +152,12 @@ void lexerNextToken(Lexer* lexer);
 
 /**
  * @brief 预扫描并打印所有 Token
- * 
+ *
  * 在解析开始前调用，一次性输出所有 token。
+ * 仅在 DEBUG_ENABLE=1 时可用。
  */
+#ifdef DEBUG_ENABLE
 void lexerDebugPrintAll(Lexer *lexer);
+#endif
 
 #endif  /* LEXER_H */

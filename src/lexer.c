@@ -33,6 +33,8 @@ static const char* tokenTypeName(TokenType type) {
  * 预扫描并输出所有 Token
  * ======================================================================== */
 
+#ifdef DEBUG_ENABLE
+
 void lexerDebugPrintAll(Lexer *lexer) {
     if (g_debug_level < DEBUG_LEVEL_TRACE) return;
 
@@ -101,6 +103,8 @@ void lexerDebugPrintAll(Lexer *lexer) {
     lexer->err_pos = saved_err_pos;
     lexer->pos = saved_pos;
 }
+
+#endif /* DEBUG_ENABLE */
 
 /* ========================================================================
  * 错误处理

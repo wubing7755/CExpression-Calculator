@@ -32,7 +32,7 @@ typedef enum {
 
 typedef struct {
   unsigned step_index;
-  const char *message;
+  char message[256];   /**< 内嵌缓冲区，避免栈对象生命周期问题 */
   double elapsed_ms;
 } CalcStepInfo;
 
